@@ -3,7 +3,7 @@ import * as SettingsModel from '../models/settings.model';
 import * as UserModel from '../models/user.model';
 import { pool } from '../db/index';
 
-export const updatePassword = async (userId: string, currentPasswordPlain: string, newPasswordPlain: string): Promise<void> => {
+export const updatePassword = async (userId: number, currentPasswordPlain: string, newPasswordPlain: string): Promise<void> => {
   const result = await pool.query('SELECT password FROM users WHERE id = $1', [userId]);
   if (result.rows.length === 0) throw new Error('User not found');
   
@@ -15,15 +15,15 @@ export const updatePassword = async (userId: string, currentPasswordPlain: strin
   await pool.query('UPDATE users SET password = $1 WHERE id = $2', [newPasswordHash, userId]);
 };
 
-export const getPreferences = async (userId: string) => {
+export const getPreferences = async (userId: number) => {
   return await SettingsModel.getSettingsByUserId(userId);
 };
 
-export const updatePreferences = async (userId: string, settings: Partial<SettingsModel.UserSettings>) => {
+export const updatePreferences = async (userId: number, settings: Partial<SettingsModel.UserSettings>) => {
   return await SettingsModel.updateSettings(userId, settings);
 };
 
-export const getAcademicSettings = async (userId: string) => {
+export const getAcademicSettings = async (userId: number) => {
   const settings = await SettingsModel.getSettingsByUserId(userId);
   const userResult = await pool.query('SELECT grade_level as "gradeLevel" FROM users WHERE id = $1', [userId]);
   
@@ -34,7 +34,7 @@ export const getAcademicSettings = async (userId: string) => {
   };
 };
 
-export const updateAcademicSettings = async (userId: string, academic: { school?: string; gradeLevel?: string; goals?: string }) => {
+export const updateAcademicSettings = async (userId: number, academic: { school?: string; gradeLevel?: string; goals?: string }) => {
   if (academic.gradeLevel) {
     await pool.query('UPDATE users SET grade_level = $1 WHERE id = $2', [academic.gradeLevel, userId]);
   }
@@ -45,10 +45,10 @@ export const updateAcademicSettings = async (userId: string, academic: { school?
   });
 };
 
-export const getSessions = async (userId: string) => {
+export const getSessions = async (userId: number) => {
   return await SettingsModel.getSessionsByUserId(userId);
 };
 
-export const terminateSession = async (userId: string, sessionId: string) => {
+export const terminateSession = async (userId: number, sessionId: number) => {
   return await SettingsModel.deleteSession(userId, sessionId);
 };

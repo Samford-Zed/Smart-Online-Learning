@@ -1,6 +1,6 @@
 import { pool } from '../db/index';
 
-export const getStudentGrade = async (userId: string): Promise<string | null> => {
+export const getStudentGrade = async (userId: number): Promise<string | null> => {
   const result = await pool.query(
     `SELECT student_info->>'grade' as grade FROM student_profiles WHERE user_id = $1`,
     [userId]
@@ -16,7 +16,7 @@ export const getSubjectsByGrade = async (grade: string) => {
   return result.rows;
 };
 
-export const getSubjectById = async (subjectId: string) => {
+export const getSubjectById = async (subjectId: number) => {
   const result = await pool.query(
     'SELECT * FROM subjects WHERE id = $1',
     [subjectId]
@@ -24,7 +24,7 @@ export const getSubjectById = async (subjectId: string) => {
   return result.rows[0];
 };
 
-export const getLessonsBySubjectId = async (subjectId: string) => {
+export const getLessonsBySubjectId = async (subjectId: number) => {
   const result = await pool.query(
     'SELECT * FROM lessons WHERE subject_id = $1 ORDER BY order_no ASC',
     [subjectId]
@@ -32,7 +32,7 @@ export const getLessonsBySubjectId = async (subjectId: string) => {
   return result.rows;
 };
 
-export const getLessonById = async (lessonId: string) => {
+export const getLessonById = async (lessonId: number) => {
   const result = await pool.query(
     'SELECT * FROM lessons WHERE id = $1',
     [lessonId]
@@ -40,7 +40,7 @@ export const getLessonById = async (lessonId: string) => {
   return result.rows[0];
 };
 
-export const getVideosByLessonId = async (lessonId: string) => {
+export const getVideosByLessonId = async (lessonId: number) => {
   const result = await pool.query(
     'SELECT * FROM videos WHERE lesson_id = $1',
     [lessonId]
@@ -48,7 +48,7 @@ export const getVideosByLessonId = async (lessonId: string) => {
   return result.rows;
 };
 
-export const getPdfsByLessonId = async (lessonId: string) => {
+export const getPdfsByLessonId = async (lessonId: number) => {
   const result = await pool.query(
     'SELECT * FROM pdfs WHERE lesson_id = $1',
     [lessonId]

@@ -14,7 +14,7 @@ export const getClasses = async (req: Request, res: Response) => {
 export const getCourseDetails = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).auth.userId;
-    const { slug } = req.params;
+    const slug = req.params.slug as string;
     const course = await StudentService.getCourseDetails(slug, userId);
     if (!course) return res.status(404).json({ message: 'Course not found' });
     res.json(course);
@@ -23,10 +23,37 @@ export const getCourseDetails = async (req: Request, res: Response) => {
   }
 };
 
+export const getSubjectLessons = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).auth.userId;
+    const slug = req.params.slug as string;
+    const course = await StudentService.getCourseDetails(slug, userId);
+    if (!course) return res.status(404).json({ message: 'Subject not found' });
+
+    // Flatten lessons from all modules
+    const lessons = course.modules?.flatMap((module: any) =>
+      module.lessons?.map((lesson: any) => ({
+        ...lesson,
+        moduleId: module.id,
+        moduleTitle: module.title
+      })) || []
+    ) || [];
+
+    res.json({
+      subjectId: course.id,
+      subjectTitle: course.title,
+      lessons
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching lessons', error });
+  }
+};
+
 export const getLesson = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).auth.userId;
-    const { slug, lessonId } = req.params;
+    const slug = req.params.slug as string;
+    const lessonId = parseInt(req.params.lessonId as string, 10);
     const lesson = await StudentService.getLesson(slug, lessonId, userId);
     if (!lesson) return res.status(404).json({ message: 'Lesson not found' });
     res.json(lesson);
@@ -38,7 +65,7 @@ export const getLesson = async (req: Request, res: Response) => {
 export const markLessonComplete = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).auth.userId;
-    const { lessonId } = req.params;
+    const lessonId = parseInt(req.params.lessonId as string, 10);
     const { completed } = req.body;
     await StudentService.markLessonComplete(userId, lessonId, completed);
     res.json({ message: 'Lesson status updated' });
@@ -60,7 +87,7 @@ export const getAssignments = async (req: Request, res: Response) => {
 export const getAssignment = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).auth.userId;
-    const { id } = req.params;
+    const id = parseInt(req.params.id as string, 10);
     const assignment = await StudentService.getAssignment(id, userId);
     if (!assignment) return res.status(404).json({ message: 'Assignment not found' });
     res.json(assignment);
@@ -72,7 +99,7 @@ export const getAssignment = async (req: Request, res: Response) => {
 export const submitAssignment = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).auth.userId;
-    const { id } = req.params;
+    const id = parseInt(req.params.id as string, 10);
     const fileUrl = req.file ? `/uploads/${req.file.filename}` : req.body.fileUrl;
     
     if (!fileUrl) return res.status(400).json({ message: 'File is required' });

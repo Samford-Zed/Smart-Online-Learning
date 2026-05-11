@@ -594,3 +594,12 @@ export default function CompleteProfilePage() {
     </main>
   );
 }
+
+        <p className="absolute bottom-6 text-sm text-ink-500">
+          Need help?{" "}
+          <a href="#" className="text-brand hover:underline">Contact Support</a>
+        </p>
+      </section>
+    </main>
+  );
+}

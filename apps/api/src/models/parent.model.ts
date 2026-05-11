@@ -2,7 +2,7 @@ import { pool } from '../db/index';
 
 export interface ParentDashboardData {
   child: {
-    id: string;
+    id: number;
     fullName: string;
     grade: string;
     avatarUrl?: string;
@@ -13,13 +13,13 @@ export interface ParentDashboardData {
     schoolName: string;
   };
   currentSubjects: Array<{
-    id: string;
+    id: number;
     name: string;
     progress: number;
     currentTopic: string;
   }>;
   recentActivity: Array<{
-    id: string;
+    id: number;
     type: 'quiz' | 'submission' | 'system';
     title: string;
     score?: number;
@@ -28,7 +28,7 @@ export interface ParentDashboardData {
   }>;
 }
 
-export const getLinkedStudent = async (parentId: string) => {
+export const getLinkedStudent = async (parentId: number) => {
   const result = await pool.query(
     `SELECT u.id, COALESCE(u.full_name, split_part(u.email, '@', 1)) as "fullName", u.grade_level as "grade"
      FROM parent_student_links psl
@@ -39,12 +39,12 @@ export const getLinkedStudent = async (parentId: string) => {
   return result.rows[0];
 };
 
-export const getParentName = async (parentId: string) => {
+export const getParentName = async (parentId: number) => {
   const result = await pool.query('SELECT full_name as "fullName" FROM users WHERE id = $1', [parentId]);
   return result.rows[0]?.fullName || 'Parent';
 };
 
-export const getChildSummary = async (studentId: string) => {
+export const getChildSummary = async (studentId: number) => {
   // Mocking GPA and Attendance for now as they require complex aggregation
   // In a real scenario, we'd query quiz_submissions and session logs
   const result = await pool.query(
@@ -60,7 +60,7 @@ export const getChildSummary = async (studentId: string) => {
   };
 };
 
-export const getChildSubjects = async (studentId: string) => {
+export const getChildSubjects = async (studentId: number) => {
   const result = await pool.query(
     `SELECT s.id, s.name, 
       (SELECT COUNT(*)::float / NULLIF((SELECT COUNT(*) FROM lessons WHERE subject_id = s.id), 0) * 100 
@@ -82,7 +82,7 @@ export const getChildSubjects = async (studentId: string) => {
   }));
 };
 
-export const getRecentActivity = async (studentId: string) => {
+export const getRecentActivity = async (studentId: number) => {
   const result = await pool.query(
     `(SELECT qs.id, 'quiz' as type, q.title, qs.score, qs.submitted_at as timestamp, 'success' as status
       FROM quiz_submissions qs
@@ -105,7 +105,7 @@ export const getRecentActivity = async (studentId: string) => {
   return result.rows;
 };
 
-export const getReportCard = async (studentId: string, semester: string) => {
+export const getReportCard = async (studentId: number, semester: string) => {
   // Existing report card logic
   const subjects = await getChildSubjects(studentId);
   const summary = await getChildSummary(studentId);
@@ -156,7 +156,7 @@ export const getReportCard = async (studentId: string, semester: string) => {
   };
 };
 
-export const getStudentProgress = async (studentId: string, period: string) => {
+export const getStudentProgress = async (studentId: number, period: string) => {
   const summary = await getChildSummary(studentId);
   const subjects = await getChildSubjects(studentId);
 

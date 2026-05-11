@@ -3,7 +3,7 @@ import * as DiscussionService from '../services/discussion.service';
 
 export const addMessage = async (req: Request, res: Response) => {
   try {
-    const { lessonId } = req.params;
+    const lessonId = parseInt(req.params.lessonId as string, 10);
     const { message } = req.body;
     const userId = req.auth?.userId;
 
@@ -19,7 +19,7 @@ export const addMessage = async (req: Request, res: Response) => {
 
 export const getMessages = async (req: Request, res: Response) => {
   try {
-    const { lessonId } = req.params;
+    const lessonId = parseInt(req.params.lessonId as string, 10);
     const messages = await DiscussionService.getMessages(lessonId);
     res.json(messages);
   } catch (error: any) {

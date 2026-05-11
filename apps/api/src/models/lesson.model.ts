@@ -1,6 +1,6 @@
 import { pool } from '../db/index';
 
-export const getLessonWithDetails = async (slug: string, lessonId: string, userId: string) => {
+export const getLessonWithDetails = async (slug: string, lessonId: number, userId: number) => {
   const lessonRes = await pool.query(`
     SELECT l.id as "lessonId", l.title, l.description, l.order_no, l.subject_id
     FROM lessons l
@@ -58,7 +58,7 @@ export const getLessonWithDetails = async (slug: string, lessonId: string, userI
   };
 };
 
-export const completeLesson = async (userId: string, lessonId: string, completed: boolean) => {
+export const completeLesson = async (userId: number, lessonId: number, completed: boolean) => {
   const result = await pool.query(`
     INSERT INTO lesson_completion (user_id, lesson_id, is_completed)
     VALUES ($1, $2, $3)

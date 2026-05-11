@@ -1,7 +1,7 @@
 import * as ParentModel from '../models/parent.model';
 import { pool } from '../db/index';
 
-export const getDashboardData = async (parentId: string) => {
+export const getDashboardData = async (parentId: number) => {
   const child = await ParentModel.getLinkedStudent(parentId);
   if (!child) return null;
 
@@ -28,14 +28,14 @@ export const getDashboardData = async (parentId: string) => {
   };
 };
 
-export const getStudentProgress = async (parentId: string, period: string) => {
+export const getStudentProgress = async (parentId: number, period: string) => {
   const child = await ParentModel.getLinkedStudent(parentId);
   if (!child) return null;
 
   return await ParentModel.getStudentProgress(child.id, period);
 };
 
-export const getStudentActivities = async (parentId: string, filters: any) => {
+export const getStudentActivities = async (parentId: number, filters: any) => {
   const child = await ParentModel.getLinkedStudent(parentId);
   if (!child) return [];
 
@@ -44,14 +44,14 @@ export const getStudentActivities = async (parentId: string, filters: any) => {
   return activities;
 };
 
-export const getReport = async (parentId: string, semester: string) => {
+export const getReport = async (parentId: number, semester: string) => {
   const child = await ParentModel.getLinkedStudent(parentId);
   if (!child) return null;
 
   return await ParentModel.getReportCard(child.id, semester);
 };
 
-export const getProfile = async (parentId: string) => {
+export const getProfile = async (parentId: number) => {
   const result = await pool.query(
     'SELECT id, full_name as "fullName", email, role FROM users WHERE id = $1',
     [parentId]
@@ -59,7 +59,7 @@ export const getProfile = async (parentId: string) => {
   return result.rows[0];
 };
 
-export const getNotifications = async (parentId: string) => {
+export const getNotifications = async (parentId: number) => {
   const result = await pool.query(
     'SELECT id, message, type, is_read as "isRead", created_at as "timestamp" FROM notifications WHERE user_id = $1 ORDER BY created_at DESC',
     [parentId]
@@ -67,14 +67,14 @@ export const getNotifications = async (parentId: string) => {
   return result.rows;
 };
 
-export const markNotificationRead = async (parentId: string, notificationId: string) => {
+export const markNotificationRead = async (parentId: number, notificationId: number) => {
   await pool.query(
     'UPDATE notifications SET is_read = true WHERE id = $1 AND user_id = $2',
     [notificationId, parentId]
   );
 };
 
-export const updateProfile = async (parentId: string, data: { fullName?: string; email?: string }) => {
+export const updateProfile = async (parentId: number, data: { fullName?: string; email?: string }) => {
   if (data.fullName && data.email) {
     await pool.query(
       'UPDATE users SET full_name = $1, email = $2 WHERE id = $3',

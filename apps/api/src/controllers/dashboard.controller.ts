@@ -57,8 +57,8 @@ export const markNotificationRead = async (req: Request, res: Response): Promise
       return;
     }
 
-    const { id } = req.params;
-    const notification = await DashboardService.markNotificationRead(userId, id);
+    const id = req.params.id as string;
+    const notification = await DashboardService.markNotificationRead(userId, parseInt(id, 10));
     res.status(200).json(notification);
   } catch (error: any) {
     if (error.message === 'Notification not found') {

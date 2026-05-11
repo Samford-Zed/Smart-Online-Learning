@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { authenticateJWT } from '../middlewares/authenticateJWT';
 import { authorizeRoles } from '../middlewares/authorizeRoles';
 import * as StudentController from '../controllers/student.controller';
+import * as DashboardController from '../controllers/dashboard.controller';
 import { upload } from '../lib/upload';
 
 const router = Router();
@@ -9,9 +10,17 @@ const router = Router();
 // Protect all routes and allow only students
 router.use(authenticateJWT, authorizeRoles('student'));
 
+// PROFILE & PROGRESS
+router.get('/profile', DashboardController.getProfile);
+router.get('/progress', DashboardController.getProgress);
+
 // 1. COURSES MODULE
 router.get('/classes', StudentController.getClasses);
+router.get('/subjects', StudentController.getClasses); // Alias for subjects
 router.get('/classes/:slug', StudentController.getCourseDetails);
+router.get('/subjects/:slug', StudentController.getCourseDetails); // Alias for course details
+router.get('/classes/:slug/lessons', StudentController.getSubjectLessons);
+router.get('/subjects/:slug/lessons', StudentController.getSubjectLessons); // List all lessons for subject
 
 // 2. DASHBOARD
 router.get('/progress/overview', StudentController.getProgressOverview);
@@ -22,14 +31,59 @@ router.get('/grades/recent', StudentController.getRecentGrades);
 // 3. LESSON PLAYER API
 import * as DiscussionController from '../controllers/discussion.controller';
 router.get('/classes/:slug/lessons/:lessonId', StudentController.getLesson);
+router.get('/subjects/:slug/lessons/:lessonId', StudentController.getLesson); // Alias
 router.patch('/classes/:slug/lessons/:lessonId/complete', StudentController.markLessonComplete);
+router.patch('/subjects/:slug/lessons/:lessonId/complete', StudentController.markLessonComplete); // Alias
 router.get('/classes/:slug/lessons/:lessonId/discussion', DiscussionController.getMessages);
+router.get('/subjects/:slug/lessons/:lessonId/discussion', DiscussionController.getMessages); // Alias
 router.post('/classes/:slug/lessons/:lessonId/discussion', DiscussionController.addMessage);
+router.post('/subjects/:slug/lessons/:lessonId/discussion', DiscussionController.addMessage); // Alias
 
 // 4. ASSIGNMENTS UPGRADE
 router.get('/assignments', StudentController.getAssignments);
 router.get('/assignments/:id', StudentController.getAssignment);
 router.post('/assignments/:id/submit', upload.single('file'), StudentController.submitAssignment);
+
+// QUIZZES & INTERACTIONS
+import * as InteractionController from '../controllers/interaction.controller';
+router.get('/quizzes/:id', InteractionController.getQuiz);
+router.post('/quizzes/:id/submit', InteractionController.submitQuiz);
+
+// LESSON MATERIALS - PDFs
+router.get('/lessons/:lessonId/pdfs', async (req, res) => {
+  try {
+    const { pool } = await import('../db/index');
+    const lessonId = parseInt(req.params.lessonId as string, 10);
+    if (isNaN(lessonId)) {
+      return res.status(400).json({ message: 'Invalid lessonId' });
+    }
+    const result = await pool.query(
+      'SELECT id, title, url as "downloadUrl" FROM pdfs WHERE lesson_id = $1',
+      [lessonId]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching PDFs', error });
+  }
+});
+
+// LESSON MATERIALS - Videos
+router.get('/lessons/:lessonId/videos', async (req, res) => {
+  try {
+    const { pool } = await import('../db/index');
+    const lessonId = parseInt(req.params.lessonId as string, 10);
+    if (isNaN(lessonId)) {
+      return res.status(400).json({ message: 'Invalid lessonId' });
+    }
+    const result = await pool.query(
+      'SELECT id, title, url FROM videos WHERE lesson_id = $1',
+      [lessonId]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching videos', error });
+  }
+});
 
 // 5. BASIC GRADES MODULE
 router.get('/grades', StudentController.getGrades);

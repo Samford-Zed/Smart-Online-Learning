@@ -1,6 +1,6 @@
 import { pool } from '../db/index';
 
-export const getStudentGrades = async (userId: string) => {
+export const getStudentGrades = async (userId: number) => {
   const result = await pool.query(`
     WITH subject_scores AS (
       -- Quiz scores
@@ -58,7 +58,7 @@ export const getStudentGrades = async (userId: string) => {
   };
 };
 
-export const getRecentGrades = async (userId: string, limit: number) => {
+export const getRecentGrades = async (userId: number, limit: number) => {
   const result = await pool.query(`
     (SELECT 
       qs.id,

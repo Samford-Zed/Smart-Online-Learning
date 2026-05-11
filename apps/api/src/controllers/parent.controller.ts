@@ -120,7 +120,7 @@ export const updatePreferences = async (req: Request, res: Response) => {
 export const markNotificationRead = async (req: Request, res: Response) => {
   try {
     const parentId = req.auth?.userId;
-    const { id } = req.params;
+    const id = parseInt(req.params.id as string, 10);
     if (!parentId) return res.status(401).json({ error: 'Unauthorized' });
 
     await ParentService.markNotificationRead(parentId, id);

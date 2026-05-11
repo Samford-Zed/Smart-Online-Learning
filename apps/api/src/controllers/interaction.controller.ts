@@ -3,13 +3,13 @@ import * as InteractionService from '../services/interaction.service';
 
 export const getQuiz = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = req.auth?.userId;
+    const userId = (req as any).auth?.userId;
     if (!userId) {
       res.status(401).json({ error: 'Unauthorized' });
       return;
     }
 
-    const { id } = req.params;
+    const id = parseInt(req.params.id as string, 10);
     const quiz = await InteractionService.getQuiz(userId, id);
     res.status(200).json(quiz);
   } catch (error: any) {
@@ -28,13 +28,13 @@ export const getQuiz = async (req: Request, res: Response): Promise<void> => {
 
 export const submitQuiz = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = req.auth?.userId;
+    const userId = (req as any).auth?.userId;
     if (!userId) {
       res.status(401).json({ error: 'Unauthorized' });
       return;
     }
 
-    const { id } = req.params;
+    const id = parseInt(req.params.id as string, 10);
     const { answers } = req.body;
 
     if (!Array.isArray(answers)) {
@@ -42,7 +42,13 @@ export const submitQuiz = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    const result = await InteractionService.submitQuiz(userId, id, answers);
+    // Convert questionId strings to numbers in answers array
+    const parsedAnswers = answers.map((ans: any) => ({
+      questionId: parseInt(ans.questionId, 10),
+      selectedOption: ans.selectedOption
+    }));
+
+    const result = await InteractionService.submitQuiz(userId, id, parsedAnswers);
     res.status(201).json(result);
   } catch (error: any) {
     if (error.message === 'Quiz not found' || error.message === 'Grade not found for student' || error.message === 'Lesson not found' || error.message === 'Subject not found') {
@@ -64,16 +70,16 @@ export const submitQuiz = async (req: Request, res: Response): Promise<void> => 
 
 export const getAssignments = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = req.auth?.userId;
+    const userId = (req as any).auth?.userId;
     if (!userId) {
       res.status(401).json({ error: 'Unauthorized' });
       return;
     }
 
     // Usually assignments are per lesson
-    const lessonId = req.query.lessonId as string;
-    if (!lessonId) {
-      res.status(400).json({ error: 'lessonId query parameter is required' });
+    const lessonId = parseInt(req.query.lessonId as string, 10);
+    if (isNaN(lessonId)) {
+      res.status(400).json({ error: 'lessonId query parameter is required and must be a number' });
       return;
     }
 
@@ -95,13 +101,13 @@ export const getAssignments = async (req: Request, res: Response): Promise<void>
 
 export const submitAssignment = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = req.auth?.userId;
+    const userId = (req as any).auth?.userId;
     if (!userId) {
       res.status(401).json({ error: 'Unauthorized' });
       return;
     }
 
-    const { id } = req.params;
+    const id = parseInt(req.params.id as string, 10);
     const { content, fileUrl } = req.body;
 
     const submission = await InteractionService.submitAssignment(userId, id, content, fileUrl);
@@ -126,13 +132,13 @@ export const submitAssignment = async (req: Request, res: Response): Promise<voi
 
 export const updateVideoProgress = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = req.auth?.userId;
+    const userId = (req as any).auth?.userId;
     if (!userId) {
       res.status(401).json({ error: 'Unauthorized' });
       return;
     }
 
-    const { id } = req.params;
+    const id = parseInt(req.params.id as string, 10);
     const { watchedDuration, isCompleted } = req.body;
 
     if (typeof watchedDuration !== 'number' || typeof isCompleted !== 'boolean') {

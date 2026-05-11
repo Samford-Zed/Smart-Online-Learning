@@ -1,7 +1,7 @@
 import { pool } from '../db/index';
 
 export interface User {
-  id: string;
+  id: number;
   fullName: string;
   email: string;
   password?: string;
@@ -14,7 +14,7 @@ export const findUserByEmail = async (email: string) => {
   return result.rows[0];
 };
 
-export const registerUser = async (fullName: string, email: string, passwordHash: string, role: string, gradeLevel?: string, studentEmail?: string) => {
+export const registerUser = async (fullName: string, email: string, passwordHash: string, role: string, gradeLevel?: string, studentEmail?: string, profileData?: any) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -28,13 +28,16 @@ export const registerUser = async (fullName: string, email: string, passwordHash
 
     // 2. STUDENT REGISTRATION FLOW
     if (role === 'student') {
-      // Create profile (existing logic)
-      if (gradeLevel) {
-        await client.query(
-          'INSERT INTO student_profiles (user_id, student_info) VALUES ($1, $2)',
-          [user.id, JSON.stringify({ grade: gradeLevel })]
-        );
-      }
+      // Create profile with all provided info
+      const studentInfo = {
+        grade: gradeLevel,
+        ...(profileData || {})
+      };
+
+      await client.query(
+        'INSERT INTO student_profiles (user_id, student_info) VALUES ($1, $2)',
+        [user.id, JSON.stringify(studentInfo)]
+      );
 
       // Auto-link logic: find ParentStudentLink where studentEmail === email
       const linkResult = await client.query(

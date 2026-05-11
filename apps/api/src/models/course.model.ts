@@ -1,6 +1,6 @@
 import { pool } from '../db/index';
 
-export const getAllCourses = async (userId: string) => {
+export const getAllCourses = async (userId: number) => {
   const result = await pool.query(`
     SELECT 
       s.id,
@@ -25,7 +25,7 @@ export const getAllCourses = async (userId: string) => {
   return result.rows;
 };
 
-export const getCourseBySlug = async (slug: string, userId: string) => {
+export const getCourseBySlug = async (slug: string, userId: number) => {
   const courseRes = await pool.query(`
     SELECT id, slug, name as title, instructor, description
     FROM subjects

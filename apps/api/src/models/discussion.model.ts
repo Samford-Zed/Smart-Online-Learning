@@ -1,15 +1,15 @@
 import { pool } from '../db/index';
 
 export interface DiscussionMessage {
-  id: string;
-  lessonId: string;
-  userId: string;
+  id: number;
+  lessonId: number;
+  userId: number;
   fullName?: string;
   message: string;
   createdAt: string;
 }
 
-export const createDiscussionMessage = async (lessonId: string, userId: string, message: string): Promise<DiscussionMessage> => {
+export const createDiscussionMessage = async (lessonId: number, userId: number, message: string): Promise<DiscussionMessage> => {
   const result = await pool.query(
     `WITH inserted AS (
       INSERT INTO discussions (lesson_id, user_id, message) 
@@ -33,7 +33,7 @@ export const createDiscussionMessage = async (lessonId: string, userId: string, 
   };
 };
 
-export const getDiscussionsByLessonId = async (lessonId: string): Promise<DiscussionMessage[]> => {
+export const getDiscussionsByLessonId = async (lessonId: number): Promise<DiscussionMessage[]> => {
   const result = await pool.query(
     `SELECT d.id, d.lesson_id as "lessonId", d.user_id as "userId", u.full_name as "fullName", d.message, d.created_at as "createdAt"
      FROM discussions d

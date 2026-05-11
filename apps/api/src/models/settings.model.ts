@@ -1,7 +1,7 @@
 import { pool } from '../db/index';
 
 export interface UserSettings {
-  userId: string;
+  userId: number;
   theme: 'light' | 'dark' | 'system';
   fontSize: 'sm' | 'md' | 'lg';
   highContrast: boolean;
@@ -16,14 +16,14 @@ export interface UserSettings {
 }
 
 export interface UserSession {
-  sessionId: string;
-  userId: string;
+  sessionId: number;
+  userId: number;
   device: string;
   location: string;
   lastActive: string;
 }
 
-export const getSettingsByUserId = async (userId: string): Promise<UserSettings> => {
+export const getSettingsByUserId = async (userId: number): Promise<UserSettings> => {
   const result = await pool.query(
     'SELECT user_id as "userId", theme, font_size as "fontSize", high_contrast as "highContrast", language, notifications, school, goals FROM user_settings WHERE user_id = $1',
     [userId]
@@ -44,7 +44,7 @@ export const getSettingsByUserId = async (userId: string): Promise<UserSettings>
   return result.rows[0];
 };
 
-export const updateSettings = async (userId: string, settings: Partial<UserSettings>): Promise<UserSettings> => {
+export const updateSettings = async (userId: number, settings: Partial<UserSettings>): Promise<UserSettings> => {
   const current = await getSettingsByUserId(userId);
   const updated = { ...current, ...settings };
   
@@ -74,7 +74,7 @@ export const updateSettings = async (userId: string, settings: Partial<UserSetti
   return updated;
 };
 
-export const getSessionsByUserId = async (userId: string): Promise<UserSession[]> => {
+export const getSessionsByUserId = async (userId: number): Promise<UserSession[]> => {
   const result = await pool.query(
     'SELECT id as "sessionId", user_id as "userId", device, location, last_active as "lastActive" FROM sessions WHERE user_id = $1 ORDER BY last_active DESC',
     [userId]
@@ -82,11 +82,11 @@ export const getSessionsByUserId = async (userId: string): Promise<UserSession[]
   return result.rows;
 };
 
-export const deleteSession = async (userId: string, sessionId: string): Promise<void> => {
+export const deleteSession = async (userId: number, sessionId: number): Promise<void> => {
   await pool.query('DELETE FROM sessions WHERE id = $1 AND user_id = $2', [sessionId, userId]);
 };
 
-export const createSession = async (userId: string, device: string, location: string): Promise<UserSession> => {
+export const createSession = async (userId: number, device: string, location: string): Promise<UserSession> => {
   const result = await pool.query(
     'INSERT INTO sessions (user_id, device, location) VALUES ($1, $2, $3) RETURNING id as "sessionId", user_id as "userId", device, location, last_active as "lastActive"',
     [userId, device, location]

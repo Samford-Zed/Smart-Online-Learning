@@ -21,6 +21,7 @@ app.use(express.json());
 app.use('/auth', authRoutes);
 app.use('/api', authRoutes);
 app.use('/api/student', studentRoutes);
+app.use('/student', studentRoutes);
 app.use('/api/parent', parentRoutes);
 
 // A public route (No middleware)

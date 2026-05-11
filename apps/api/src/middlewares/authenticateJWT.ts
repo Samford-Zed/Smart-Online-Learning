@@ -13,13 +13,13 @@ export const authenticateJWT = (req: Request, res: Response, next: NextFunction)
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as {
-      userId: string;
+      userId: number | string;
       email: string;
       role: string;
     };
 
     req.auth = {
-      userId: decoded.userId,
+      userId: typeof decoded.userId === 'string' ? parseInt(decoded.userId, 10) : decoded.userId,
       email: decoded.email,
       role: decoded.role,
     };

@@ -1,7 +1,7 @@
 import * as InteractionModel from '../models/interaction.model';
 import * as StudentModel from '../models/student.model';
 
-const verifyGradeAccess = async (userId: string, lessonId: string) => {
+const verifyGradeAccess = async (userId: number, lessonId: number) => {
   const grade = await StudentModel.getStudentGrade(userId);
   if (!grade) throw new Error('Grade not found for student');
 
@@ -16,7 +16,7 @@ const verifyGradeAccess = async (userId: string, lessonId: string) => {
   }
 };
 
-export const getQuiz = async (userId: string, quizId: string) => {
+export const getQuiz = async (userId: number, quizId: number) => {
   const quiz = await InteractionModel.getQuizById(quizId);
   if (!quiz) throw new Error('Quiz not found');
 
@@ -26,7 +26,7 @@ export const getQuiz = async (userId: string, quizId: string) => {
   return { ...quiz, questions };
 };
 
-export const submitQuiz = async (userId: string, quizId: string, answers: { questionId: string, selectedOption: string }[]) => {
+export const submitQuiz = async (userId: number, quizId: number, answers: { questionId: number, selectedOption: string }[]) => {
   const quiz = await InteractionModel.getQuizById(quizId);
   if (!quiz) throw new Error('Quiz not found');
 
@@ -62,12 +62,12 @@ export const submitQuiz = async (userId: string, quizId: string, answers: { ques
   return { submissionId, score, totalQuestions };
 };
 
-export const getAssignments = async (userId: string, lessonId: string) => {
+export const getAssignments = async (userId: number, lessonId: number) => {
   await verifyGradeAccess(userId, lessonId);
   return await InteractionModel.getAssignmentsByLessonId(lessonId);
 };
 
-export const submitAssignment = async (userId: string, assignmentId: string, content?: string, fileUrl?: string) => {
+export const submitAssignment = async (userId: number, assignmentId: number, content?: string, fileUrl?: string) => {
   if (!content && !fileUrl) {
     throw new Error('Must provide either content or fileUrl');
   }
@@ -80,7 +80,7 @@ export const submitAssignment = async (userId: string, assignmentId: string, con
   return await InteractionModel.createAssignmentSubmission(userId, assignmentId, content, fileUrl);
 };
 
-export const updateVideoProgress = async (userId: string, videoId: string, watchedDuration: number, isCompleted: boolean) => {
+export const updateVideoProgress = async (userId: number, videoId: number, watchedDuration: number, isCompleted: boolean) => {
   const video = await InteractionModel.getVideoById(videoId);
   if (!video) throw new Error('Video not found');
 
