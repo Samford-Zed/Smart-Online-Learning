@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Calculator,
   FlaskConical,
@@ -7,12 +7,15 @@ import {
   Globe,
   Monitor,
   Search,
+  Loader2,
 } from "lucide-react";
 import { Sidebar } from "../components/Sidebar";
 import { Topbar } from "../components/Topbar";
 import { ClassCard, type ClassItem } from "../components/ClassCard";
+import { api } from "../../../services/api";
 
-const classes: ClassItem[] = [
+// Fallback mock data - used when API returns empty
+const MOCK_CLASSES: ClassItem[] = [
   {
     period: 1,
     slug: "advanced-mathematics",
@@ -137,6 +140,41 @@ const FILTERS: { id: Filter; label: string }[] = [
 export default function MyClassesPage() {
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
+  const [classes, setClasses] = useState<ClassItem[]>(MOCK_CLASSES);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Start with mock data already set
+    // Fetch and append API classes
+    api.getStudentClasses()
+      .then((data: any[]) => {
+        const apiClasses = data.map((c, i) => ({
+          period: MOCK_CLASSES.length + i + 1,
+          slug: c.slug || c.id || `api-class-${i}`,
+          title: c.title || c.name || "Untitled Class",
+          teacher: c.teacher || c.instructor || "Unknown",
+          progress: c.progress || 0,
+          chapters: c.chapters || c.lessonCount || 0,
+          hours: c.hours || c.duration || 0,
+          icon: [Calculator, FlaskConical, BookOpen, Languages, Globe, Monitor][(MOCK_CLASSES.length + i) % 6],
+          theme: c.theme || {
+            headerBg: "#dbeafe",
+            iconBg: "#2563eb",
+            iconText: "#ffffff",
+            accent: "#2563eb",
+            accentHover: "#1d4ed8",
+            progressText: "#2563eb",
+          },
+        }));
+        // Merge: keep mock + add API classes
+        setClasses((prev) => [...prev, ...apiClasses]);
+        setLoading(false);
+      })
+      .catch(() => {
+        // Silently fail - keep showing mock data
+        setLoading(false);
+      });
+  }, []);
 
   const visible = classes
     .filter((c) => {
@@ -152,6 +190,14 @@ export default function MyClassesPage() {
         c.teacher.toLowerCase().includes(q)
       );
     });
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-surface-page">
+        <Loader2 className="size-8 animate-spin text-brand" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-ink-50">

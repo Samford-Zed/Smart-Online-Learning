@@ -62,9 +62,23 @@ const URGENCY_STYLES: Record<Urgency, { border: string; badge: string; badgeText
 /**
  * Upcoming Tasks — right-column panel with task cards, checkoff, and calendar link.
  */
-export function UpcomingTasksPanel() {
+export function UpcomingTasksPanel({ tasks: apiTasks }: { tasks?: unknown[] }) {
   const { t } = useT();
-  const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
+  // Convert API tasks to internal format, or use mock data if no API data
+  const initialTasks = apiTasks && apiTasks.length > 0
+    ? apiTasks.map((t: any, i) => ({
+        id: t.id || `task-${i}`,
+        title: t.title || t.name || "Untitled Task",
+        description: t.description || "",
+        urgency: (t.urgency || "later") as Urgency,
+        urgencyLabel: t.dueDate ? `Due ${new Date(t.dueDate).toLocaleDateString()}` : (t.urgencyLabel || "Later"),
+        actionLabel: "View",
+        actionTo: t.link || "/student/assignments",
+        icon: FileText,
+        done: t.completed || t.done || false,
+      }))
+    : INITIAL_TASKS;
+  const [tasks, setTasks] = useState<Task[]>(initialTasks);
 
   function toggleDone(id: string) {
     setTasks((ts) => ts.map((t) => t.id === id ? { ...t, done: !t.done } : t));

@@ -1,6 +1,8 @@
-import { CalendarDays, BookOpen, ClipboardList, Star, FileText } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CalendarDays, BookOpen, ClipboardList, Star, FileText, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useT } from "@/i18n/I18nProvider";
+import { api } from "../../../services/api";
 import { Sidebar } from "../components/Sidebar";
 import { Topbar } from "../components/Topbar";
 import { OverallProgressCard } from "../components/OverallProgressCard";
@@ -47,6 +49,47 @@ function Reveal({
 
 export default function StudentDashboardPage() {
   const { t } = useT();
+  const [data, setData] = useState<{ currentCourses: unknown[]; upcomingTasks: unknown[]; recentGrades: unknown[] } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [userName, setUserName] = useState("Student");
+
+  useEffect(() => {
+    // Get user name from localStorage
+    const userStr = localStorage.getItem("user");
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      setUserName(user.fullName?.split(" ")[0] || "Student");
+    }
+
+    // Fetch dashboard data
+    api.getStudentOverview()
+      .then((res) => {
+        setData(res);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message);
+        setLoading(false);
+      });
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-surface-page">
+        <Loader2 className="size-8 animate-spin text-brand" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-surface-page text-red-600">
+        Error loading dashboard: {error}
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen bg-surface-page font-sans text-ink-900">
       <Sidebar />
@@ -63,7 +106,7 @@ export default function StudentDashboardPage() {
             <div>
               <h1 className="text-xl font-semibold text-ink-900">
                 {t("student.welcomeBack", { name: "" })}
-                <span className="text-brand">Elias</span>{" "}
+                <span className="text-brand">{userName}</span>{" "}
                 <span aria-hidden>👋</span>
               </h1>
               <p className="mt-1 text-sm text-ink-500">
@@ -115,7 +158,7 @@ export default function StudentDashboardPage() {
                 <LearningPathCard />
               </Reveal>
               <Reveal delay={320}>
-                <CurrentCoursesCard />
+                <CurrentCoursesCard courses={data?.currentCourses} />
               </Reveal>
               <Reveal delay={400}>
                 <WeeklyStudyHoursChart />
@@ -128,7 +171,7 @@ export default function StudentDashboardPage() {
             {/* Right column */}
             <aside className="flex flex-col gap-6">
               <Reveal delay={200}>
-                <UpcomingTasksPanel />
+                <UpcomingTasksPanel tasks={data?.upcomingTasks} />
               </Reveal>
               <Reveal delay={360}>
                 <EncouragementCard />

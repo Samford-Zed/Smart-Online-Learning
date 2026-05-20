@@ -13,23 +13,27 @@ import {
   GraduationCap,
   BookOpen,
   Shield,
+  Users,
 } from "lucide-react";
 import {
   loginSchema,
   loginDefaultValues,
   type LoginFormValues,
 } from "../validation/login.schema";
+import { api } from "../../../services/api";
 
 const ROLE_REDIRECTS: Record<string, string> = {
   student: "/student/dashboard",
-  teacher: "/student/dashboard",
+  teacher: "/teacher",
+  parent: "/parent",
   admin: "/admin/dashboard",
 };
 
 const ROLE_OPTIONS = [
   { value: "student", label: "Student", icon: GraduationCap, color: "text-brand" },
   { value: "teacher", label: "Teacher", icon: BookOpen, color: "text-emerald-600" },
-  { value: "admin", label: "Admin", icon: Shield, color: "text-violet-600" },
+  { value: "parent", label: "Parent", icon: Users, color: "text-violet-600" },
+  { value: "admin", label: "Admin", icon: Shield, color: "text-amber-600" },
 ];
 
 export function LoginForm() {
@@ -53,8 +57,26 @@ export function LoginForm() {
 
   const onSubmit = async (values: LoginFormValues) => {
     setServerError(null);
-    await new Promise((r) => setTimeout(r, 600));
-    navigate(ROLE_REDIRECTS[values.role] ?? "/student/dashboard", { replace: true });
+    try {
+      // Call backend login API
+      const response = await api.login({
+        email: values.email,
+        password: values.password,
+      });
+
+      // Store token and user info
+      localStorage.setItem("token", response.token);
+      localStorage.setItem("user", JSON.stringify(response.user));
+
+      // Redirect based on role
+      navigate(ROLE_REDIRECTS[response.user.role] ?? "/student/dashboard", { replace: true });
+    } catch (error: any) {
+      if (error.message === "Invalid credentials") {
+        setServerError("Invalid email or password");
+      } else {
+        setServerError(error.message || "Login failed. Please try again.");
+      }
+    }
   };
 
   return (
@@ -92,7 +114,7 @@ export function LoginForm() {
         <span className="text-xs font-semibold uppercase tracking-wider text-ink-400">
           Sign in as
         </span>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-4 gap-2">
           {ROLE_OPTIONS.map(({ value, label, icon: Icon, color }) => {
             const active = selectedRole === value;
             return (

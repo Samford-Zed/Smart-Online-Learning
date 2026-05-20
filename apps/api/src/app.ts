@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
+import cors from 'cors';
 import { authenticateJWT } from './middlewares/authenticateJWT';
 import authRoutes from './routes/auth.routes';
 import studentRoutes from './routes/student.routes';
@@ -12,6 +13,14 @@ initDb();
 
 const app = express();
 const httpServer = createServer(app);
+
+// Enable CORS for frontend
+app.use(cors({
+  origin: ['http://localhost:5173', 'http://localhost:3001'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 
 // Initialize Socket.io
 initSocket(httpServer);

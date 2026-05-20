@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -9,10 +9,12 @@ import {
   X,
   CalendarDays,
   MapPin,
+  Loader2,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Sidebar } from "../components/Sidebar";
 import { Topbar } from "../components/Topbar";
+import { api } from "../../../services/api";
 
 /* ------------------------- Types & static data ------------------------- */
 
@@ -169,11 +171,40 @@ type View = "Day" | "Week" | "Month";
 /* ----------------------------- Page component ----------------------------- */
 
 export default function SchedulePage() {
-  const [view, setView] = useState<View>("Week");
+  const navigate = useNavigate();
+  const [selected, setSelected] = useState<string | null>(null);
   const [weekOffset, setWeekOffset] = useState(0);
+  const [apiEvents, setApiEvents] = useState<CalendarEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.getStudentSchedule()
+      .then((data: any[]) => {
+        // Transform API data to CalendarEvent format and append to existing events
+        const transformed: CalendarEvent[] = data.map((e, i) => ({
+          id: `api-${e.id || i}`,
+          title: e.title || e.name || "Untitled",
+          subtitle: e.subtitle || e.location || e.type || "",
+          extra: e.extra || e.details || [],
+          day: (e.day !== undefined ? e.day : new Date(e.startTime || e.date).getDay() - 1) as 0|1|2|3|4,
+          startHour: e.startHour || new Date(e.startTime).getHours() || 9,
+          endHour: e.endHour || new Date(e.endTime).getHours() || 10,
+          kind: (e.kind || e.type || "live") as EventKind,
+        }));
+        setApiEvents(transformed);
+        setLoading(false);
+      })
+      .catch(() => {
+        // Silently fail - keep showing mock data
+        setLoading(false);
+      });
+  }, []);
+
+  // Combine mock events with API events
+  const allEvents = useMemo(() => [...events, ...apiEvents], [apiEvents]);
+  const [view, setView] = useState<View>("Week");
   const [activeEvent, setActiveEvent] = useState<CalendarEvent | null>(null);
   const [showAllUpcoming, setShowAllUpcoming] = useState(false);
-  const navigate = useNavigate();
 
   const totalRows = HOURS.length; // 9 rows
   const gridHeight = totalRows * ROW_HEIGHT;
@@ -184,7 +215,7 @@ export default function SchedulePage() {
   // Events that fall on today — used by the Day view.
   const dayEvents = useMemo(
     () =>
-      events
+      allEvents
         .filter((e) => e.day === todayIdx)
         .sort((a, b) => a.startHour - b.startHour),
     [todayIdx],
@@ -210,7 +241,7 @@ export default function SchedulePage() {
       "BEGIN:VCALENDAR",
       "VERSION:2.0",
       "PRODID:-//SOLS//Schedule//EN",
-      ...events.flatMap((e) => [
+      ...allEvents.flatMap((e) => [
         "BEGIN:VEVENT",
         `UID:${e.id}@sols`,
         `SUMMARY:${e.title}${e.subtitle ? ` (${e.subtitle})` : ""}`,
@@ -399,7 +430,7 @@ export default function SchedulePage() {
                   </div>
 
                   {/* Events */}
-                  {events.map((ev) => {
+                  {allEvents.map((ev) => {
                     const style = KIND_STYLES[ev.kind];
                     const rowStart = HOURS.indexOf(ev.startHour) + 1;
                     const rowSpan = ev.endHour - ev.startHour;
@@ -459,7 +490,7 @@ export default function SchedulePage() {
 
               {/* Month view */}
               {view === "Month" && (
-                <MonthView events={events} onEventClick={setActiveEvent} />
+                <MonthView events={allEvents} onEventClick={setActiveEvent} />
               )}
 
               {/* Footer row: legend + actions */}
@@ -561,7 +592,7 @@ export default function SchedulePage() {
           {showAllUpcoming && (
             <AllUpcomingModal
               upcoming={upcoming}
-              events={events}
+              events={allEvents}
               onClose={() => setShowAllUpcoming(false)}
               onEventClick={(ev) => {
                 setShowAllUpcoming(false);
@@ -890,7 +921,7 @@ function AllUpcomingModal({
             This Week's Events
           </h3>
           <ul className="mt-2 flex flex-col gap-2">
-            {events.map((ev) => {
+            {allEvents.map((ev) => {
               const style = KIND_STYLES[ev.kind];
               const day = DAYS[ev.day];
               return (

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const loginSchema = z.object({
-  role: z.enum(["student", "teacher", "admin"], {
+  role: z.enum(["student", "teacher", "parent", "admin"], {
     errorMap: () => ({ message: "Please select a role" }),
   }),
   email: z

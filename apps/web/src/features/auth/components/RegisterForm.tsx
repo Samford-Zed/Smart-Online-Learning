@@ -14,12 +14,14 @@ import {
   GraduationCap,
   BookOpen,
   Users,
+  BookMarked,
 } from "lucide-react";
 import {
   registerSchema,
   registerDefaultValues,
   type RegisterFormValues,
 } from "../validation/register.schema";
+import { api } from "../../../services/api";
 
 const ROLE_OPTIONS = [
   { value: "student", label: "Student", icon: GraduationCap, color: "text-brand",         bg: "bg-brand/5",         border: "border-brand"         },
@@ -48,11 +50,33 @@ export function RegisterForm() {
 
   const onSubmit = async (values: RegisterFormValues) => {
     setServerError(null);
-    await new Promise((r) => setTimeout(r, 600));
-    navigate(`/complete-profile?role=${values.role}`, {
-      replace: true,
-      state: { fullName: values.fullName, email: values.email },
-    });
+    try {
+      // Call backend register API
+      const response = await api.register({
+        fullName: values.fullName,
+        email: values.email,
+        password: values.password,
+        role: values.role,
+        gradeLevel: values.role === "student" ? values.gradeLevel : undefined,
+      });
+
+      // Store user info in localStorage for now (can be replaced with state management)
+      localStorage.setItem("user", JSON.stringify(response.user));
+
+      // Navigate to complete profile with state
+      navigate(`/complete-profile?role=${values.role}`, {
+        replace: true,
+        state: { fullName: values.fullName, email: values.email, userId: response.user.id },
+      });
+    } catch (error: any) {
+      if (error.message === "Email already exists") {
+        setServerError("An account with this email already exists.");
+      } else if (error.message.includes("required")) {
+        setServerError(error.message);
+      } else {
+        setServerError("Registration failed. Please try again.");
+      }
+    }
   };
 
   return (
@@ -116,6 +140,27 @@ export function RegisterForm() {
         <div role="alert" className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
           <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
           <span>{serverError}</span>
+        </div>
+      )}
+
+      {/* Grade Level - only for students */}
+      {selectedRole === "student" && (
+        <div className="flex flex-col gap-2">
+          <label htmlFor="gradeLevel" className="text-xs font-semibold text-ink-700">Grade Level</label>
+          <div className="relative">
+            <BookMarked className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-ink-400" aria-hidden />
+            <select
+              id="gradeLevel"
+              {...register("gradeLevel")}
+              className="h-12 w-full appearance-none rounded-xl border border-ink-200 bg-white pl-10 pr-4 text-sm text-ink-900 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
+            >
+              <option value="">Select grade</option>
+              {[...Array(12)].map((_, i) => (
+                <option key={i + 1} value={`Grade ${i + 1}`}>Grade {i + 1}</option>
+              ))}
+            </select>
+          </div>
+          {errors.gradeLevel && <span className="text-xs text-red-600">{errors.gradeLevel.message}</span>}
         </div>
       )}
 

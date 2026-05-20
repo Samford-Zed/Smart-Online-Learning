@@ -9,16 +9,28 @@ import {
   Check,
   ChevronRight,
   Search,
+  Loader2,
 } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Sidebar } from "../components/Sidebar";
 import { Topbar } from "../components/Topbar";
-import {
-  fetchAssignments,
-  type Assignment,
-  type AssignmentStatusKey as StatusKey,
-} from "../data/assignmentsData";
+import { api } from "../../../services/api";
+import { assignments as MOCK_ASSIGNMENTS } from "../data/assignmentsData";
+
+// Types matching API response
+type Assignment = {
+  id: string;
+  title: string;
+  subject: string;
+  dueDate: string;
+  status: "pending" | "in-progress" | "submitted" | "graded";
+  score?: number;
+  maxScore: number;
+  type: string;
+};
+
+type StatusKey = "pending" | "in-progress" | "submitted" | "graded";
 
 type Tab = "all" | "pending" | "submitted" | "graded";
 
@@ -36,11 +48,47 @@ export default function AssignmentsPage() {
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<Assignment[]>([]);
 
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     let active = true;
-    fetchAssignments().then((a) => {
-      if (active) setItems(a);
-    });
+
+    // Start with mock assignments
+    const mockItems: Assignment[] = MOCK_ASSIGNMENTS.map((a) => ({
+      id: a.id,
+      title: a.title,
+      subject: a.subject,
+      dueDate: a.due,
+      status: a.status as Assignment["status"],
+      score: a.score !== "-" && a.score !== "Pending Grading" ? parseInt(a.score) : undefined,
+      maxScore: a.maxPoints,
+      type: "Assignment",
+    }));
+    setItems(mockItems);
+
+    // Fetch and append API assignments
+    api.getStudentAssignments()
+      .then((data: any[]) => {
+        if (!active) return;
+        // Transform API data to Assignment format
+        const apiItems: Assignment[] = data.map((a) => ({
+          id: `api-${a.id || a.assignment_id}`,
+          title: a.title || a.name || "Untitled",
+          subject: a.subject || a.course || "General",
+          dueDate: a.dueDate || a.due_date || new Date().toISOString(),
+          status: (a.status || "pending") as Assignment["status"],
+          score: a.score,
+          maxScore: a.maxScore || a.max_score || 100,
+          type: a.type || "Assignment",
+        }));
+        // Merge: keep mock + add API items
+        setItems((prev) => [...prev, ...apiItems]);
+        setLoading(false);
+      })
+      .catch(() => {
+        // Silently fail - keep showing mock data
+        setLoading(false);
+      });
     return () => {
       active = false;
     };
@@ -71,6 +119,15 @@ export default function AssignmentsPage() {
       items[0];
     if (next) navigate(`/student/assignments/${next.id}`);
   }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-surface-page">
+        <Loader2 className="size-8 animate-spin text-brand" />
+      </div>
+    );
+  }
+
 
   return (
     <div className="flex min-h-screen bg-ink-50">

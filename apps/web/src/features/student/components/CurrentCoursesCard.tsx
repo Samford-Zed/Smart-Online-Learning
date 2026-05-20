@@ -49,8 +49,21 @@ const courses: Course[] = [
 /**
  * Current Courses — grid of enrolled subjects with per-course progress bars.
  */
-export function CurrentCoursesCard() {
+export function CurrentCoursesCard({ courses: apiCourses }: { courses?: unknown[] }) {
   const { t } = useT();
+  // Use API data if available, otherwise fall back to mock data
+  const displayCourses = apiCourses && apiCourses.length > 0
+    ? apiCourses.map((c: any) => ({
+        title: c.title || c.name || "Untitled",
+        slug: c.slug || c.id || c.title?.toLowerCase().replace(/\s+/g, "-") || "course",
+        teacher: c.teacher || c.instructor || "Unknown",
+        progress: c.progress || 0,
+        icon: BookOpen,
+        tileClass: "bg-brand/10 text-brand",
+        barClass: "bg-brand",
+      }))
+    : courses;
+
   return (
     <section className="rounded-2xl border border-ink-200 bg-white p-5 shadow-card">
       <header className="flex items-center justify-between">
@@ -66,8 +79,8 @@ export function CurrentCoursesCard() {
       </header>
 
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        {courses.map((c) => (
-          <CourseCard key={c.title} course={c} />
+        {displayCourses.map((c) => (
+          <CourseCard key={c.slug} course={c} />
         ))}
       </div>
     </section>

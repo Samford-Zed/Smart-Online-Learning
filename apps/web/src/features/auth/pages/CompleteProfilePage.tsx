@@ -377,8 +377,8 @@ function SuccessScreen({ role, name }: { role: Role; name: string }) {
   const navigate = useNavigate();
   const ROLE_META = {
     student: { icon: GraduationCap, color: "text-brand", bg: "bg-brand/10", label: "Student Portal", to: "/student/dashboard" },
-    teacher: { icon: BookOpen, color: "text-emerald-600", bg: "bg-emerald-50", label: "Teacher Dashboard", to: "/student/dashboard" },
-    parent: { icon: Users, color: "text-violet-600", bg: "bg-violet-50", label: "Parent Portal", to: "/student/dashboard" },
+    teacher: { icon: BookOpen, color: "text-emerald-600", bg: "bg-emerald-50", label: "Teacher Dashboard", to: "/teacher" },
+    parent: { icon: Users, color: "text-violet-600", bg: "bg-violet-50", label: "Parent Portal", to: "/parent" },
   };
   const meta = ROLE_META[role];
   const Icon = meta.icon;
@@ -585,15 +585,6 @@ export default function CompleteProfilePage() {
             </>
           )}
         </div>
-
-        <p className="absolute bottom-6 text-sm text-ink-500">
-          Need help?{" "}
-          <a href="#" className="text-brand hover:underline">Contact Support</a>
-        </p>
-      </section>
-    </main>
-  );
-}
 
         <p className="absolute bottom-6 text-sm text-ink-500">
           Need help?{" "}

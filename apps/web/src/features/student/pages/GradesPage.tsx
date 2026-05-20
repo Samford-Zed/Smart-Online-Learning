@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   GraduationCap,
   Award,
@@ -8,6 +8,7 @@ import {
   PartyPopper,
   CalendarDays,
   Check,
+  Loader2,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Sidebar } from "../components/Sidebar";
@@ -15,6 +16,7 @@ import { Topbar } from "../components/Topbar";
 import { ProgressOverTimeChart } from "../components/ProgressOverTimeChart";
 import { SkillsRadarChartCard } from "../components/SkillsRadarChart";
 import { SubjectBreakdownCard } from "../components/SubjectBreakdownCard";
+import { api } from "../../../services/api";
 
 const TERMS = ["Fall 2024", "Spring 2024", "Fall 2023", "Spring 2023"];
 
@@ -29,6 +31,37 @@ export default function GradesPage() {
   const [bookingState, setBookingState] = useState<
     "idle" | "booking" | "booked"
   >("idle");
+  const [grades, setGrades] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.getStudentGrades()
+      .then((data: any[]) => {
+        setGrades(data);
+        setLoading(false);
+      })
+      .catch((err: { message: string }) => {
+        setError(err.message);
+        setLoading(false);
+      });
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-surface-page">
+        <Loader2 className="size-8 animate-spin text-brand" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-surface-page text-red-600">
+        Error loading grades: {error}
+      </div>
+    );
+  }
 
   /** Builds and downloads a text-based grade report (mock PDF). */
   function handleDownload() {
