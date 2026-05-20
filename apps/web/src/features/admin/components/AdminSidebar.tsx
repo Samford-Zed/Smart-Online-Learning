@@ -18,6 +18,7 @@ import {
   ClipboardList,
   FileText,
   Megaphone,
+  Settings,
 } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
 import { NavLink, useLocation } from "react-router-dom";
@@ -39,7 +40,9 @@ const items: NavItem[] = [
   { key: "teachers",       tKey: "teachers",       icon: GraduationCap,   to: "/admin/teachers" },
   { key: "parents",        tKey: "parents",        icon: Users,           to: "/admin/parents" },
   { key: "courses",        tKey: "courses",        icon: BookOpen,        to: "/admin/courses" },
+  { key: "curriculum",     tKey: "curriculum",     icon: LayoutGrid,      to: "/admin/curriculum" },
   { key: "enrollments",    tKey: "enrollments",    icon: ClipboardList,   to: "/admin/enrollments" },
+  { key: "settings",       tKey: "settings",       icon: Settings,         to: "/admin/settings" },
   { key: "calendar",       tKey: "calendar",       icon: CalendarDays,    to: "/admin/calendar" },
   { key: "tasks",          tKey: "tasks",          icon: CheckSquare,     to: "/admin/tasks" },
   { key: "students",       tKey: "students",       icon: UsersRound,      to: "/admin/students" },

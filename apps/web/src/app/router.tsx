@@ -35,6 +35,9 @@ import AdminMessagesPage from "@/features/admin/pages/AdminMessagesPage";
 import AdminAnnouncementsPage from "@/features/admin/pages/AdminAnnouncementsPage";
 import AdminEnrollmentsPage from "@/features/admin/pages/AdminEnrollmentsPage";
 import AdminManagePagesPage from "@/features/admin/pages/AdminManagePagesPage";
+import CurriculumPage from "@/features/admin/pages/CurriculumPage";
+import SubjectEditorPage from "@/features/admin/pages/SubjectEditorPage";
+import AdminSettingsPage from "@/features/admin/pages/AdminSettingsPage";
 import { ParentPortalRoot } from "@/features/parent/ParentPortalRoot";
 import { TeacherPortal } from "@/features/teacher/TeacherPortal";
 
@@ -103,6 +106,9 @@ export function AppRouter() {
       <Route path="/admin/announcements" element={<AdminAnnouncementsPage />} />
       <Route path="/admin/enrollments" element={<AdminEnrollmentsPage />} />
       <Route path="/admin/manage-pages" element={<AdminManagePagesPage />} />
+      <Route path="/admin/curriculum" element={<CurriculumPage />} />
+      <Route path="/admin/curriculum/:slug" element={<SubjectEditorPage />} />
+      <Route path="/admin/settings" element={<AdminSettingsPage />} />
 
       {/* Parent portal — state-based nav inside the component */}
       <Route path="/parent/*" element={<ParentPortalRoot />} />

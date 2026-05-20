@@ -1,74 +1,47 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Search, Plus, X, ChevronLeft, ChevronRight, MoreHorizontal, CheckCircle2, Clock, XCircle,
   Users, GraduationCap, BookOpen, ClipboardList, Mail, Phone, Eye, Trash2, Check, AlertTriangle,
-  User, Calendar, Award,
+  User, Calendar, Award, Loader2,
 } from "lucide-react";
 import { AdminSidebar } from "../components/AdminSidebar";
 import { AdminTopbar } from "../components/AdminTopbar";
 import { useT } from "../../../i18n/I18nProvider";
+import { api } from "../../../services/api";
 
-type EnrollStatus = "Approved" | "Pending" | "Rejected";
+type EnrollStatus = "approved" | "pending" | "rejected";
 
 type Enrollment = {
-  id: string; student: string; avatar: string; studentId: string;
-  course: string; subject: string; grade: string; teacher: string;
-  enrolledDate: string; status: EnrollStatus;
-  email: string; phone: string; parent: string; gpa: number;
+  id: number; 
+  student_id: number;
+  student_name: string;
+  student_email: string;
+  subject_id: number;
+  subject_name: string;
+  enrollment_date: string; 
+  status: 'pending' | 'approved' | 'rejected' | 'completed';
+  notes?: string;
 };
 
-const STATUS_COLORS: Record<EnrollStatus, string> = {
-  Approved: "bg-emerald-50 text-emerald-700",
-  Pending:  "bg-amber-50 text-amber-700",
-  Rejected: "bg-red-50 text-red-600",
+const STATUS_COLORS: Record<EnrollStatus | string, string> = {
+  approved: "bg-emerald-50 text-emerald-700",
+  pending:  "bg-amber-50 text-amber-700",
+  rejected: "bg-red-50 text-red-600",
 };
 
-const STATUS_ICON: Record<EnrollStatus, React.ReactNode> = {
-  Approved: <CheckCircle2 className="size-3.5 text-emerald-500" />,
-  Pending:  <Clock className="size-3.5 text-amber-500" />,
-  Rejected: <XCircle className="size-3.5 text-red-500" />,
+const STATUS_ICON: Record<EnrollStatus | string, React.ReactNode> = {
+  approved: <CheckCircle2 className="size-3.5 text-emerald-500" />,
+  pending:  <Clock className="size-3.5 text-amber-500" />,
+  rejected: <XCircle className="size-3.5 text-red-500" />,
 };
-
-const STUDENTS_DB = [
-  { name: "Evelyn Harper",  avatar: "https://i.pravatar.cc/80?img=44", studentId: "PRE43178", grade: "Grade 10", email: "evelyn@school.edu",  phone: "+1 555-2001", parent: "Margaret Harper", gpa: 3.9 },
-  { name: "Diana Plenty",   avatar: "https://i.pravatar.cc/80?img=36", studentId: "PRE43174", grade: "Grade 11", email: "diana@school.edu",   phone: "+1 555-2002", parent: "Robert Plenty",   gpa: 3.7 },
-  { name: "John Millar",    avatar: "https://i.pravatar.cc/80?img=15", studentId: "PRE43187", grade: "Grade 10", email: "john@school.edu",    phone: "+1 555-2003", parent: "Sarah Millar",    gpa: 3.6 },
-  { name: "Sofia Martinez", avatar: "https://i.pravatar.cc/80?img=47", studentId: "PRE43201", grade: "Grade 9",  email: "sofia@school.edu",   phone: "+1 555-2004", parent: "Carlos Martinez", gpa: 3.8 },
-  { name: "Noah Williams",  avatar: "https://i.pravatar.cc/80?img=12", studentId: "PRE43195", grade: "Grade 12", email: "noah@school.edu",    phone: "+1 555-2005", parent: "James Williams",  gpa: 3.5 },
-  { name: "Amara Osei",     avatar: "https://i.pravatar.cc/80?img=23", studentId: "PRE43202", grade: "Grade 9",  email: "amara@school.edu",   phone: "+1 555-2006", parent: "Kofi Osei",       gpa: 4.0 },
-  { name: "Luca Bianchi",   avatar: "https://i.pravatar.cc/80?img=8",  studentId: "PRE43211", grade: "Grade 11", email: "luca@school.edu",    phone: "+1 555-2007", parent: "Marco Bianchi",   gpa: 3.4 },
-  { name: "Priya Sharma",   avatar: "https://i.pravatar.cc/80?img=38", studentId: "PRE43219", grade: "Grade 10", email: "priya@school.edu",   phone: "+1 555-2008", parent: "Ravi Sharma",     gpa: 3.9 },
-];
-
-const COURSES_DB = [
-  { title: "Biology 101",          subject: "Biology",     teacher: "Dr. Alice Monroe"  },
-  { title: "Calculus",             subject: "Mathematics", teacher: "Mr. James Okafor"  },
-  { title: "Modern History",       subject: "History",     teacher: "Mr. Leo Fernandez" },
-  { title: "World Literature",     subject: "Literature",  teacher: "Ms. Fatima Hassan" },
-  { title: "Physics II",           subject: "Physics",     teacher: "Ms. Clara Zhang"   },
-  { title: "Organic Chemistry",    subject: "Chemistry",   teacher: "Mr. David Mensah"  },
-  { title: "Intro to Programming", subject: "CS",          teacher: "Mr. James Okafor"  },
-];
-
-const INITIAL: Enrollment[] = [
-  { id: "e1",  ...STUDENTS_DB[0], course: "Biology 101",         subject: "Biology",     teacher: "Dr. Alice Monroe",  enrolledDate: "Sep 1, 2024",  status: "Approved" as EnrollStatus, student: STUDENTS_DB[0].name, avatar: STUDENTS_DB[0].avatar },
-  { id: "e2",  ...STUDENTS_DB[1], course: "Calculus",            subject: "Mathematics", teacher: "Mr. James Okafor",  enrolledDate: "Sep 1, 2024",  status: "Approved" as EnrollStatus, student: STUDENTS_DB[1].name, avatar: STUDENTS_DB[1].avatar },
-  { id: "e3",  ...STUDENTS_DB[2], course: "Modern History",      subject: "History",     teacher: "Mr. Leo Fernandez", enrolledDate: "Sep 2, 2024",  status: "Approved" as EnrollStatus, student: STUDENTS_DB[2].name, avatar: STUDENTS_DB[2].avatar },
-  { id: "e4",  ...STUDENTS_DB[3], course: "World Literature",    subject: "Literature",  teacher: "Ms. Fatima Hassan", enrolledDate: "Sep 2, 2024",  status: "Approved" as EnrollStatus, student: STUDENTS_DB[3].name, avatar: STUDENTS_DB[3].avatar },
-  { id: "e5",  ...STUDENTS_DB[4], course: "Physics II",          subject: "Physics",     teacher: "Ms. Clara Zhang",   enrolledDate: "Sep 3, 2024",  status: "Pending"  as EnrollStatus, student: STUDENTS_DB[4].name, avatar: STUDENTS_DB[4].avatar },
-  { id: "e6",  ...STUDENTS_DB[5], course: "Organic Chemistry",   subject: "Chemistry",   teacher: "Mr. David Mensah",  enrolledDate: "Sep 3, 2024",  status: "Approved" as EnrollStatus, student: STUDENTS_DB[5].name, avatar: STUDENTS_DB[5].avatar },
-  { id: "e7",  ...STUDENTS_DB[6], course: "Calculus",            subject: "Mathematics", teacher: "Mr. James Okafor",  enrolledDate: "Sep 4, 2024",  status: "Approved" as EnrollStatus, student: STUDENTS_DB[6].name, avatar: STUDENTS_DB[6].avatar },
-  { id: "e8",  ...STUDENTS_DB[7], course: "Biology 101",         subject: "Biology",     teacher: "Dr. Alice Monroe",  enrolledDate: "Sep 4, 2024",  status: "Rejected" as EnrollStatus, student: STUDENTS_DB[7].name, avatar: STUDENTS_DB[7].avatar },
-  { id: "e9",  ...STUDENTS_DB[0], course: "Intro to Programming",subject: "CS",          teacher: "Mr. James Okafor",  enrolledDate: "Sep 5, 2024",  status: "Approved" as EnrollStatus, student: STUDENTS_DB[0].name, avatar: STUDENTS_DB[0].avatar },
-  { id: "e10", ...STUDENTS_DB[4], course: "World Literature",    subject: "Literature",  teacher: "Ms. Fatima Hassan", enrolledDate: "Oct 1, 2024",  status: "Pending"  as EnrollStatus, student: STUDENTS_DB[4].name, avatar: STUDENTS_DB[4].avatar },
-];
 
 const PAGE_SIZE = 7;
-const STATUSES: Array<"All" | EnrollStatus> = ["All", "Approved", "Pending", "Rejected"];
+const STATUSES: Array<"All" | EnrollStatus> = ["All", "approved", "pending", "rejected"];
 
 export default function AdminEnrollmentsPage() {
   const { t } = useT();
-  const [enrollments, setEnrollments] = useState<Enrollment[]>(INITIAL);
+  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All" | EnrollStatus>("All");
   const [page, setPage] = useState(1);
@@ -78,33 +51,79 @@ export default function AdminEnrollmentsPage() {
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
+  useEffect(() => {
+    loadEnrollments();
+  }, [statusFilter]);
+
+  async function loadEnrollments() {
+    setLoading(true);
+    try {
+      const filters = statusFilter === "All" ? {} : { status: statusFilter.toLowerCase() };
+      const response = await api.getAdminEnrollments(filters);
+      if (response.success) {
+        setEnrollments(response.data);
+      }
+    } catch (error) {
+      console.error("Failed to load enrollments:", error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(null), 2500); }
 
   const filtered = enrollments.filter(e => {
     const q = search.toLowerCase();
-    const matchSearch = e.student.toLowerCase().includes(q) || e.course.toLowerCase().includes(q) || e.studentId.toLowerCase().includes(q);
-    const matchStatus = statusFilter === "All" || e.status === statusFilter;
+    const matchSearch = (e.student_name || '').toLowerCase().includes(q) || (e.subject_name || '').toLowerCase().includes(q) || String(e.student_id).includes(q);
+    const matchStatus = statusFilter === "All" || e.status.toLowerCase() === statusFilter.toLowerCase();
     return matchSearch && matchStatus;
   });
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  function approve(id: string) { setEnrollments(es => es.map(e => e.id === id ? { ...e, status: "Approved" } : e)); showToast("Enrollment approved"); }
-  function reject(id: string) { setEnrollments(es => es.map(e => e.id === id ? { ...e, status: "Rejected" } : e)); showToast("Enrollment rejected"); }
-  function handleAdd(e: Enrollment) { setEnrollments(es => [e, ...es]); setShowWizard(false); showToast(`${e.student} enrolled in ${e.course}`); }
-  function handleDelete() {
+  async function approve(id: number) {
+    try {
+      const response = await api.updateAdminEnrollmentStatus(id, 'approved');
+      if (response.success) {
+        setEnrollments(es => es.map(e => e.id === id ? { ...e, status: "approved" } : e));
+        showToast("Enrollment approved");
+      }
+    } catch (error) {
+      console.error("Failed to approve enrollment:", error);
+    }
+  }
+  async function reject(id: number) {
+    try {
+      const response = await api.updateAdminEnrollmentStatus(id, 'rejected');
+      if (response.success) {
+        setEnrollments(es => es.map(e => e.id === id ? { ...e, status: "rejected" } : e));
+        showToast("Enrollment rejected");
+      }
+    } catch (error) {
+      console.error("Failed to reject enrollment:", error);
+    }
+  }
+  function handleAdd(e: Enrollment) { setEnrollments(es => [e, ...es]); setShowWizard(false); showToast(`${e.student_name} enrolled in ${e.subject_name}`); }
+  async function handleDelete() {
     if (!deleteTarget) return;
-    setEnrollments(es => es.filter(e => e.id !== deleteTarget.id));
-    showToast("Enrollment removed");
+    try {
+      const response = await api.deleteAdminEnrollment(deleteTarget.id);
+      if (response.success) {
+        setEnrollments(es => es.filter(e => e.id !== deleteTarget.id));
+        showToast("Enrollment removed");
+      }
+    } catch (error) {
+      console.error("Failed to delete enrollment:", error);
+    }
     setDeleteTarget(null);
   }
 
   const statValues = {
     total: enrollments.length,
-    approved: enrollments.filter(e => e.status === "Approved").length,
-    pending: enrollments.filter(e => e.status === "Pending").length,
-    rejected: enrollments.filter(e => e.status === "Rejected").length,
+    approved: enrollments.filter(e => e.status === "approved").length,
+    pending: enrollments.filter(e => e.status === "pending").length,
+    rejected: enrollments.filter(e => e.status === "rejected").length,
   };
 
   return (
@@ -164,7 +183,7 @@ export default function AdminEnrollmentsPage() {
               {STATUSES.map(s => (
                 <button key={s} onClick={() => { setStatusFilter(s); setPage(1); }}
                   className={`rounded-full px-3 py-1 text-xs font-semibold transition ${statusFilter === s ? "bg-violet-600 text-white" : "bg-white border border-ink-200 text-ink-600 hover:bg-violet-50"}`}>
-                  {s}
+                  {s === "All" ? s : s.charAt(0).toUpperCase() + s.slice(1)}
                 </button>
               ))}
             </div>
@@ -190,27 +209,30 @@ export default function AdminEnrollmentsPage() {
                     <tr key={e.id} onClick={() => setViewTarget(e)} className="border-b border-ink-50 last:border-0 hover:bg-violet-50/20 transition cursor-pointer">
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-2.5">
-                          <img src={e.avatar} alt={e.student} className="size-9 rounded-full object-cover ring-2 ring-violet-100" />
+                          <div className="size-9 rounded-full bg-violet-100 flex items-center justify-center ring-2 ring-violet-100">
+                            <User className="size-5 text-violet-600" />
+                          </div>
                           <div>
-                            <p className="font-semibold text-ink-900">{e.student}</p>
-                            <p className="text-xs text-ink-400 font-mono">{e.studentId}</p>
+                            <p className="font-semibold text-ink-900">{e.student_name}</p>
+                            <p className="text-xs text-ink-400 font-mono">ID: {e.student_id}</p>
                           </div>
                         </div>
                       </td>
                       <td className="px-4 py-3.5">
-                        <p className="font-medium text-ink-900">{e.course}</p>
-                        <p className="text-xs text-ink-400">{e.subject}</p>
+                        <p className="font-medium text-ink-900">{e.subject_name}</p>
                       </td>
-                      <td className="px-4 py-3.5 text-xs text-ink-600">{e.grade}</td>
-                      <td className="px-4 py-3.5 text-xs text-ink-600">{e.teacher}</td>
-                      <td className="px-4 py-3.5 text-xs text-ink-500">{e.enrolledDate}</td>
+                      <td className="px-4 py-3.5 text-xs text-ink-600">-</td>
+                      <td className="px-4 py-3.5 text-xs text-ink-600">-</td>
+                      <td className="px-4 py-3.5 text-xs text-ink-500">
+                        {new Date(e.enrollment_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </td>
                       <td className="px-4 py-3.5">
                         <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_COLORS[e.status]}`}>
-                          {STATUS_ICON[e.status]}{e.status}
+                          {STATUS_ICON[e.status]}{e.status.charAt(0).toUpperCase() + e.status.slice(1)}
                         </span>
                       </td>
                       <td className="px-4 py-3.5" onClick={ev => ev.stopPropagation()}>
-                        {e.status === "Pending" ? (
+                        {e.status === "pending" ? (
                           <div className="flex items-center gap-1.5">
                             <button onClick={() => approve(e.id)} className="rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition">Approve</button>
                             <button onClick={() => reject(e.id)} className="rounded-lg bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-100 transition">Reject</button>
@@ -257,7 +279,7 @@ export default function AdminEnrollmentsPage() {
           <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl animate-scale-in text-center">
             <span className="mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-red-100"><AlertTriangle className="size-6 text-red-600" /></span>
             <h3 className="text-lg font-bold text-ink-900">Remove Enrollment</h3>
-            <p className="mt-1 text-sm text-ink-500">Remove <strong>{deleteTarget.student}</strong> from <strong>{deleteTarget.course}</strong>?</p>
+            <p className="mt-1 text-sm text-ink-500">Remove <strong>{deleteTarget.student_name}</strong> from <strong>{deleteTarget.subject_name}</strong>?</p>
             <div className="mt-5 flex gap-3">
               <button onClick={() => setDeleteTarget(null)} className="flex-1 rounded-xl border border-ink-200 py-2.5 text-sm font-semibold text-ink-700 hover:bg-ink-50">Cancel</button>
               <button onClick={handleDelete} className="flex-1 rounded-xl bg-red-600 py-2.5 text-sm font-semibold text-white hover:bg-red-700">Remove</button>
@@ -285,49 +307,52 @@ function EnrollmentDetail({ enrollment: e, onClose, onApprove, onReject }: { enr
         </div>
         <div className="p-6">
           <div className="mb-6 flex items-center gap-4">
-            <img src={e.avatar} alt={e.student} className="size-16 rounded-full object-cover ring-4 ring-violet-100" />
+            <div className="size-16 rounded-full bg-violet-100 flex items-center justify-center ring-4 ring-violet-100">
+              <User className="size-8 text-violet-600" />
+            </div>
             <div>
-              <h3 className="text-xl font-bold text-ink-900">{e.student}</h3>
-              <p className="text-sm text-ink-500">{e.grade} · GPA {e.gpa.toFixed(1)}</p>
+              <h3 className="text-xl font-bold text-ink-900">{e.student_name}</h3>
+              <p className="text-sm text-ink-500">ID: {e.student_id}</p>
               <span className={`mt-1 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_COLORS[e.status]}`}>
-                {STATUS_ICON[e.status]}{e.status}
+                {STATUS_ICON[e.status]}{e.status.charAt(0).toUpperCase() + e.status.slice(1)}
               </span>
             </div>
           </div>
 
           <div className="mb-5 rounded-xl border border-violet-100 bg-violet-50 p-4">
-            <h4 className="mb-2 flex items-center gap-2 text-xs font-bold uppercase text-violet-700"><BookOpen className="size-3.5" />Enrolled Course</h4>
-            <p className="text-base font-bold text-ink-900">{e.course}</p>
-            <p className="text-xs text-ink-500">{e.subject} · Taught by {e.teacher}</p>
-            <p className="mt-2 flex items-center gap-1 text-xs text-ink-500"><Calendar className="size-3" />Enrolled on {e.enrolledDate}</p>
+            <h4 className="mb-2 flex items-center gap-2 text-xs font-bold uppercase text-violet-700"><BookOpen className="size-3.5" />Enrolled Subject</h4>
+            <p className="text-base font-bold text-ink-900">{e.subject_name}</p>
+            <p className="mt-2 flex items-center gap-1 text-xs text-ink-500"><Calendar className="size-3" />Enrolled on {new Date(e.enrollment_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
           </div>
 
           <div className="mb-5">
             <h4 className="mb-3 text-xs font-bold uppercase text-ink-400">Student Information</h4>
             <div className="grid grid-cols-2 gap-3">
-              {[
-                { label: "Student ID", value: e.studentId, icon: User },
-                { label: "GPA", value: e.gpa.toFixed(2), icon: Award },
-                { label: "Email", value: e.email, icon: Mail },
-                { label: "Phone", value: e.phone, icon: Phone },
-              ].map(item => (
-                <div key={item.label} className="flex items-start gap-3 rounded-xl border border-ink-100 bg-ink-50 p-3">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-600"><item.icon className="size-4" /></span>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-semibold uppercase text-ink-400">{item.label}</p>
-                    <p className="truncate text-sm font-semibold text-ink-900">{item.value}</p>
-                  </div>
+              <div className="flex items-start gap-3 rounded-xl border border-ink-100 bg-ink-50 p-3">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-600"><User className="size-4" /></span>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase text-ink-400">Student ID</p>
+                  <p className="truncate text-sm font-semibold text-ink-900">{e.student_id}</p>
                 </div>
-              ))}
+              </div>
+              <div className="flex items-start gap-3 rounded-xl border border-ink-100 bg-ink-50 p-3">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-600"><Mail className="size-4" /></span>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase text-ink-400">Email</p>
+                  <p className="truncate text-sm font-semibold text-ink-900">{e.student_email}</p>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="mb-6 rounded-xl border border-ink-100 bg-white p-4">
-            <h4 className="mb-2 text-xs font-bold uppercase text-ink-400">Parent / Guardian</h4>
-            <p className="text-sm font-semibold text-ink-900">{e.parent}</p>
-          </div>
+          {e.notes && (
+            <div className="mb-6 rounded-xl border border-ink-100 bg-white p-4">
+              <h4 className="mb-2 text-xs font-bold uppercase text-ink-400">Notes</h4>
+              <p className="text-sm text-ink-600">{e.notes}</p>
+            </div>
+          )}
 
-          {e.status === "Pending" && (
+          {e.status === "pending" && (
             <div className="flex gap-3">
               <button onClick={onReject} className="flex-1 rounded-xl bg-red-50 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-100 transition">Reject</button>
               <button onClick={onApprove} className="flex-1 rounded-xl bg-emerald-600 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 transition">Approve Enrollment</button>
@@ -342,32 +367,103 @@ function EnrollmentDetail({ enrollment: e, onClose, onApprove, onReject }: { enr
 /* ──────── Multi-Step Enrollment Wizard ──────── */
 const ENROLL_STEPS = ["Select Student", "Choose Course", "Confirm"];
 
+type StudentResult = { id: number; name: string; email: string; grade_level: string | null };
+type SubjectResult = { id: number; name: string; grade: string; instructor: string | null };
+
 function EnrollmentWizard({ onClose, onAdd, nextId }: { onClose: () => void; onAdd: (e: Enrollment) => void; nextId: number }) {
   const [step, setStep] = useState(0);
   const [studentSearch, setStudentSearch] = useState("");
-  const [selectedStudent, setSelectedStudent] = useState<typeof STUDENTS_DB[number] | null>(null);
-  const [selectedCourse, setSelectedCourse] = useState<typeof COURSES_DB[number] | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<StudentResult | null>(null);
+  const [selectedSubject, setSelectedSubject] = useState<SubjectResult | null>(null);
   const [enrollDate, setEnrollDate] = useState(new Date().toISOString().slice(0, 10));
+  
+  const [studentResults, setStudentResults] = useState<StudentResult[]>([]);
+  const [subjects, setSubjects] = useState<SubjectResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [loadingSubjects, setLoadingSubjects] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const studentResults = STUDENTS_DB.filter(s =>
-    s.name.toLowerCase().includes(studentSearch.toLowerCase()) || s.studentId.toLowerCase().includes(studentSearch.toLowerCase())
-  );
+  // Search students from API
+  useEffect(() => {
+    if (studentSearch.length < 2) {
+      setStudentResults([]);
+      return;
+    }
+    
+    const timer = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const response = await api.searchAdminStudents(studentSearch, 20);
+        if (response.success) {
+          setStudentResults(response.data);
+        }
+      } catch (error) {
+        console.error("Failed to search students:", error);
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, [studentSearch]);
 
-  const stepValid = [!!selectedStudent, !!selectedCourse, true];
+  // Load subjects when entering step 1
+  useEffect(() => {
+    if (step === 1) {
+      loadSubjects();
+    }
+  }, [step]);
+
+  async function loadSubjects() {
+    setLoadingSubjects(true);
+    try {
+      const response = await api.getSubjects();
+      if (response.success) {
+        setSubjects(response.data);
+      }
+    } catch (error) {
+      console.error("Failed to load subjects:", error);
+    } finally {
+      setLoadingSubjects(false);
+    }
+  }
+
+  const stepValid = [!!selectedStudent, !!selectedSubject, true];
   function next() { if (stepValid[step] && step < ENROLL_STEPS.length - 1) setStep(s => s + 1); }
   function prev() { if (step > 0) setStep(s => s - 1); }
 
-  function submit() {
-    if (!selectedStudent || !selectedCourse) return;
-    const formattedDate = new Date(enrollDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-    onAdd({
-      id: `e${Date.now()}_${nextId}`,
-      ...selectedStudent,
-      student: selectedStudent.name,
-      avatar: selectedStudent.avatar,
-      course: selectedCourse.title, subject: selectedCourse.subject, teacher: selectedCourse.teacher,
-      enrolledDate: formattedDate, status: "Pending",
-    });
+  async function submit() {
+    if (!selectedStudent || !selectedSubject) return;
+    
+    setSubmitting(true);
+    try {
+      const response = await api.createAdminEnrollment({
+        student_id: selectedStudent.id,
+        subject_id: selectedSubject.id,
+        notes: `Enrolled on ${enrollDate}`
+      });
+      
+      if (response.success) {
+        const enrollment = response.data;
+        const formattedDate = new Date(enrollDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+        onAdd({
+          id: enrollment.id,
+          student_id: selectedStudent.id,
+          student_name: selectedStudent.name,
+          student_email: selectedStudent.email,
+          subject_id: selectedSubject.id,
+          subject_name: selectedSubject.name,
+          enrollment_date: enrollment.enrollment_date,
+          status: enrollment.status,
+          notes: enrollment.notes
+        });
+        onClose();
+      }
+    } catch (error) {
+      console.error("Failed to create enrollment:", error);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -396,60 +492,76 @@ function EnrollmentWizard({ onClose, onAdd, nextId }: { onClose: () => void; onA
         <div className="p-6 min-h-[320px]">
           {step === 0 && (
             <div className="space-y-3">
-              <p className="text-xs font-semibold text-ink-700">Search and select a student</p>
+              <p className="text-xs font-semibold text-ink-700">Search and select a student (type at least 2 characters)</p>
               <label className="relative flex items-center">
                 <Search className="pointer-events-none absolute left-3 size-4 text-ink-400" />
-                <input value={studentSearch} onChange={e => setStudentSearch(e.target.value)} placeholder="Search by name or ID..."
+                <input 
+                  value={studentSearch} 
+                  onChange={e => setStudentSearch(e.target.value)} 
+                  placeholder="Search by name or email..."
                   className="h-10 w-full rounded-xl border border-ink-200 pl-9 pr-3 text-sm outline-none focus:border-violet-400" />
+                {searching && <Loader2 className="absolute right-3 size-4 animate-spin text-ink-400" />}
               </label>
               <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
                 {studentResults.map(s => (
-                  <button key={s.studentId} onClick={() => setSelectedStudent(s)}
-                    className={`flex w-full items-center gap-3 rounded-xl border-2 p-3 text-left transition ${selectedStudent?.studentId === s.studentId ? "border-violet-600 bg-violet-50" : "border-ink-200 hover:border-violet-300"}`}>
-                    <img src={s.avatar} alt={s.name} className="size-10 rounded-full object-cover" />
+                  <button key={s.id} onClick={() => setSelectedStudent(s)}
+                    className={`flex w-full items-center gap-3 rounded-xl border-2 p-3 text-left transition ${selectedStudent?.id === s.id ? "border-violet-600 bg-violet-50" : "border-ink-200 hover:border-violet-300"}`}>
+                    <div className="size-10 rounded-full bg-violet-100 flex items-center justify-center">
+                      <User className="size-5 text-violet-600" />
+                    </div>
                     <div className="flex-1">
                       <p className="text-sm font-semibold text-ink-900">{s.name}</p>
-                      <p className="text-xs text-ink-500 font-mono">{s.studentId} · {s.grade} · GPA {s.gpa}</p>
+                      <p className="text-xs text-ink-500 font-mono">{s.email} · {s.grade_level || 'N/A'}</p>
                     </div>
-                    {selectedStudent?.studentId === s.studentId && <Check className="size-5 text-violet-600" />}
+                    {selectedStudent?.id === s.id && <Check className="size-5 text-violet-600" />}
                   </button>
                 ))}
-                {studentResults.length === 0 && <p className="py-6 text-center text-xs text-ink-400">No students found</p>}
+                {studentSearch.length < 2 && <p className="py-6 text-center text-xs text-ink-400">Type at least 2 characters to search</p>}
+                {studentSearch.length >= 2 && !searching && studentResults.length === 0 && <p className="py-6 text-center text-xs text-ink-400">No students found</p>}
               </div>
             </div>
           )}
           {step === 1 && (
             <div className="space-y-3">
-              <p className="text-xs font-semibold text-ink-700">Choose a course to enroll {selectedStudent?.name} in</p>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {COURSES_DB.map(c => (
-                  <button key={c.title} onClick={() => setSelectedCourse(c)}
-                    className={`rounded-xl border-2 p-3 text-left transition ${selectedCourse?.title === c.title ? "border-violet-600 bg-violet-50" : "border-ink-200 hover:border-violet-300"}`}>
-                    <p className="text-sm font-bold text-ink-900">{c.title}</p>
-                    <p className="text-xs text-ink-500">{c.subject}</p>
-                    <p className="mt-1 text-xs text-ink-400">By {c.teacher}</p>
-                  </button>
-                ))}
-              </div>
+              <p className="text-xs font-semibold text-ink-700">Choose a subject to enroll {selectedStudent?.name} in</p>
+              {loadingSubjects ? (
+                <div className="py-12 flex items-center justify-center">
+                  <Loader2 className="size-6 animate-spin text-violet-600" />
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {subjects.map(s => (
+                    <button key={s.id} onClick={() => setSelectedSubject(s)}
+                      className={`rounded-xl border-2 p-3 text-left transition ${selectedSubject?.id === s.id ? "border-violet-600 bg-violet-50" : "border-ink-200 hover:border-violet-300"}`}>
+                      <p className="text-sm font-bold text-ink-900">{s.name}</p>
+                      <p className="text-xs text-ink-500">Grade {s.grade}</p>
+                      <p className="mt-1 text-xs text-ink-400">By {s.instructor || 'TBA'}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {!loadingSubjects && subjects.length === 0 && <p className="py-6 text-center text-xs text-ink-400">No subjects found</p>}
             </div>
           )}
-          {step === 2 && selectedStudent && selectedCourse && (
+          {step === 2 && selectedStudent && selectedSubject && (
             <div className="space-y-4">
               <p className="text-xs font-semibold uppercase text-ink-400">Confirm Enrollment</p>
 
               <div className="flex items-center gap-3 rounded-xl border border-ink-100 bg-ink-50 p-4">
-                <img src={selectedStudent.avatar} alt={selectedStudent.name} className="size-12 rounded-full object-cover ring-2 ring-violet-200" />
+                <div className="size-12 rounded-full bg-violet-100 flex items-center justify-center ring-2 ring-violet-200">
+                  <User className="size-6 text-violet-600" />
+                </div>
                 <div>
                   <p className="text-[10px] font-semibold uppercase text-ink-400">Student</p>
                   <p className="text-sm font-bold text-ink-900">{selectedStudent.name}</p>
-                  <p className="text-xs text-ink-500">{selectedStudent.studentId} · {selectedStudent.grade}</p>
+                  <p className="text-xs text-ink-500">{selectedStudent.email} · Grade {selectedStudent.grade_level || 'N/A'}</p>
                 </div>
               </div>
 
               <div className="rounded-xl border border-violet-100 bg-violet-50 p-4">
-                <p className="text-[10px] font-semibold uppercase text-violet-700">Course</p>
-                <p className="text-sm font-bold text-ink-900">{selectedCourse.title}</p>
-                <p className="text-xs text-ink-500">{selectedCourse.subject} · {selectedCourse.teacher}</p>
+                <p className="text-[10px] font-semibold uppercase text-violet-700">Subject</p>
+                <p className="text-sm font-bold text-ink-900">{selectedSubject.name}</p>
+                <p className="text-xs text-ink-500">Grade {selectedSubject.grade} · {selectedSubject.instructor || 'TBA'}</p>
               </div>
 
               <label className="flex flex-col gap-1.5">
@@ -466,19 +578,20 @@ function EnrollmentWizard({ onClose, onAdd, nextId }: { onClose: () => void; onA
         </div>
 
         <div className="flex items-center justify-between border-t border-ink-100 bg-ink-50 px-6 py-4">
-          <button onClick={prev} disabled={step === 0}
+          <button onClick={prev} disabled={step === 0 || submitting}
             className="inline-flex items-center gap-1 rounded-xl border border-ink-200 bg-white px-4 py-2 text-sm font-semibold text-ink-700 disabled:opacity-40 hover:bg-ink-100">
             <ChevronLeft className="size-4" /> Back
           </button>
           <span className="text-xs text-ink-500">Step {step + 1} of {ENROLL_STEPS.length}</span>
           {step < ENROLL_STEPS.length - 1 ? (
-            <button onClick={next} disabled={!stepValid[step]}
+            <button onClick={next} disabled={!stepValid[step] || submitting}
               className="inline-flex items-center gap-1 rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 hover:bg-violet-700">
               Next <ChevronRight className="size-4" />
             </button>
           ) : (
-            <button onClick={submit} className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
-              Confirm Enrollment
+            <button onClick={submit} disabled={submitting}
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 hover:bg-emerald-700">
+              {submitting ? <><Loader2 className="size-4 animate-spin" /> Saving...</> : "Confirm Enrollment"}
             </button>
           )}
         </div>

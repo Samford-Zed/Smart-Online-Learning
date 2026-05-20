@@ -14,7 +14,9 @@ import {
   Play,
   SkipBack,
   SkipForward,
+  Loader2,
 } from "lucide-react";
+import { api } from "../../../services/api";
 import {
   fetchLesson,
   type LessonPlayerData,
@@ -44,11 +46,66 @@ export default function LessonPlayerPage() {
     let active = true;
     setLoading(true);
     setCompleted(false);
-    fetchLesson(slug, lessonId).then((l) => {
-      if (!active) return;
-      setLesson(l);
-      setLoading(false);
-    });
+
+    const loadLesson = async () => {
+      try {
+        // Try API first
+        const apiLesson = await api.getStudentLesson(slug, lessonId);
+        if (apiLesson && active) {
+          // Transform API data to LessonPlayerData format
+          const apiTranscript = (apiLesson as any).transcript || (apiLesson as any).transcriptCues || [];
+          const apiDiscussion = (apiLesson as any).discussion || [];
+          
+          const transformed: LessonPlayerData = {
+            id: String((apiLesson as any).id || lessonId),
+            title: (apiLesson as any).title || "Untitled Lesson",
+            courseTitle: (apiLesson as any).courseTitle || (apiLesson as any).subjectName || slug,
+            moduleIndex: (apiLesson as any).moduleIndex || 1,
+            lessonIndex: (apiLesson as any).lessonIndex || 1,
+            totalLessons: (apiLesson as any).totalLessons || 10,
+            type: (apiLesson as any).type || "video",
+            duration: (apiLesson as any).duration || "10 min",
+            videoUrl: (apiLesson as any).videoUrl || (apiLesson as any).url || "",
+            transcript: Array.isArray(apiTranscript) ? apiTranscript : [{ at: "0:00", text: "Transcript not available." }],
+            discussion: Array.isArray(apiDiscussion) ? apiDiscussion : [],
+            materials: ((apiLesson as any).materials || (apiLesson as any).pdfs || []).map((m: any, i: number) => ({
+              id: String(m.id || `mat-${i}`),
+              title: m.title || `Material ${i + 1}`,
+              meta: m.meta || "PDF",
+              iconKey: m.iconKey || "pdf",
+              action: (m.action || "download") as LessonMaterial["action"],
+            })),
+            hasQuiz: (apiLesson as any).hasQuiz || false,
+            quizId: (apiLesson as any).quizId,
+            nextLessonId: (apiLesson as any).nextLessonId,
+            prevLessonId: (apiLesson as any).prevLessonId,
+            knowledgeCheck: (apiLesson as any).knowledgeCheck || { description: "Test your understanding of this lesson." },
+            outline: (apiLesson as any).outline || [],
+            // Additional fields required by LessonPlayerData type
+            courseSlug: slug,
+            moduleLabel: (apiLesson as any).moduleTitle || `Module ${(apiLesson as any).moduleIndex || 1}`,
+            points: (apiLesson as any).points || 0,
+            lessonNumber: (apiLesson as any).lessonNumber || `Lesson ${(apiLesson as any).lessonIndex || 1}`,
+            description: (apiLesson as any).description || "",
+            videoPosterUrl: (apiLesson as any).videoPosterUrl || "",
+          };
+          setLesson(transformed);
+          setLoading(false);
+          return;
+        }
+      } catch {
+        // API failed, use mock
+      }
+
+      // Fallback to mock data
+      const mockLesson = await fetchLesson(slug, lessonId);
+      if (active) {
+        setLesson(mockLesson);
+        setLoading(false);
+      }
+    };
+
+    loadLesson();
     return () => {
       active = false;
     };

@@ -121,4 +121,104 @@ export const api = {
   // Parent endpoints
   getParentDashboard: () => request<{ children: unknown[]; progress: unknown; notifications: unknown[] }>("/api/parent/dashboard"),
   getParentProfile: () => request<unknown>("/api/parent/profile"),
+
+  // Admin endpoints
+  getAdminDashboard: () => request<{ success: boolean; data: any }>("/api/admin/dashboard"),
+  getAdminUsers: (filters?: { role?: string; grade?: number; search?: string; isActive?: boolean; limit?: number; offset?: number }) => 
+    request<{ success: boolean; data: { users: any[]; total: number } }>(`/api/admin/users?${new URLSearchParams(filters as any).toString()}`),
+  getAdminUser: (id: string) => request<{ success: boolean; data: any }>(`/api/admin/users/${id}`),
+  createAdminUser: (data: { name: string; email: string; password: string; role: string; grade_level?: number }) => 
+    request<{ success: boolean; data: any }>("/api/admin/users", { method: "POST", body: JSON.stringify(data) }),
+  updateAdminUser: (id: string, data: any) => 
+    request<{ success: boolean; data: any }>(`/api/admin/users/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteAdminUser: (id: string) => 
+    request<{ success: boolean; message: string }>(`/api/admin/users/${id}`, { method: "DELETE" }),
+  resetUserPassword: (id: string, newPassword: string) => 
+    request<{ success: boolean; message: string }>(`/api/admin/users/${id}/reset-password`, { method: "POST", body: JSON.stringify({ newPassword }) }),
+  
+  // Admin - Subjects
+  getAdminSubjects: () => request<{ success: boolean; data: any[] }>("/api/admin/subjects"),
+  createAdminSubject: (data: { name: string; slug: string; description: string; instructor: string; grade: number }) => 
+    request<{ success: boolean; data: any }>("/api/admin/subjects", { method: "POST", body: JSON.stringify(data) }),
+  deleteAdminSubject: (id: string) => 
+    request<{ success: boolean; message: string }>(`/api/admin/subjects/${id}`, { method: "DELETE" }),
+  
+  // Admin - Logs
+  getAdminLogs: (limit?: number, offset?: number) => 
+    request<{ success: boolean; data: any[] }>(`/api/admin/logs?limit=${limit || 100}&offset=${offset || 0}`),
+  
+  // Admin - Modules
+  getAdminSubjectModules: (subjectId: string) => 
+    request<{ success: boolean; data: any[] }>(`/api/admin/subjects/${subjectId}/modules`),
+  createAdminModule: (data: { subject_id: number; title: string; order_no: number; description?: string }) => 
+    request<{ success: boolean; data: any }>("/api/admin/modules", { method: "POST", body: JSON.stringify(data) }),
+  updateAdminModule: (id: string, data: any) => 
+    request<{ success: boolean; data: any }>(`/api/admin/modules/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteAdminModule: (id: string) => 
+    request<{ success: boolean; message: string }>(`/api/admin/modules/${id}`, { method: "DELETE" }),
+  
+  // Admin - Subjects
+  getSubjects: () => request<{ success: boolean; data: any[] }>("/api/admin/subjects"),
+  
+  // Admin - Lessons
+  getAdminModuleLessons: (moduleId: string) => 
+    request<{ success: boolean; data: any[] }>(`/api/admin/modules/${moduleId}/lessons`),
+  createAdminLesson: (data: { module_id: number; subject_id: number; title: string; description?: string; order_no: number }) => 
+    request<{ success: boolean; data: any }>("/api/admin/lessons", { method: "POST", body: JSON.stringify(data) }),
+  updateAdminLesson: (id: string, data: any) => 
+    request<{ success: boolean; data: any }>(`/api/admin/lessons/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteAdminLesson: (id: string) => 
+    request<{ success: boolean; message: string }>(`/api/admin/lessons/${id}`, { method: "DELETE" }),
+  
+  // Admin - Content Upload
+  addAdminLessonVideo: (lessonId: string, data: { title: string; url: string }) => 
+    request<{ success: boolean; data: any }>(`/api/admin/lessons/${lessonId}/videos`, { method: "POST", body: JSON.stringify(data) }),
+  addAdminLessonPdf: (lessonId: string, data: { title: string; url: string }) => 
+    request<{ success: boolean; data: any }>(`/api/admin/lessons/${lessonId}/pdfs`, { method: "POST", body: JSON.stringify(data) }),
+  
+  // Admin - Analytics
+  getAdminEnrollmentTrends: (months?: number) => 
+    request<{ success: boolean; data: any[] }>(`/api/admin/analytics/enrollment-trends?months=${months || 6}`),
+  getAdminGradeDistribution: () => 
+    request<{ success: boolean; data: any[] }>("/api/admin/analytics/grade-distribution"),
+  getAdminSubjectEnrollment: () => 
+    request<{ success: boolean; data: any[] }>("/api/admin/analytics/subject-enrollment"),
+  
+  // Admin - Settings
+  getAdminSettings: () => request<{ success: boolean; data: Record<string, string> }>("/api/admin/settings"),
+  updateAdminSetting: (key: string, value: string) => 
+    request<{ success: boolean; message: string }>(`/api/admin/settings/${key}`, { method: "PUT", body: JSON.stringify({ value }) }),
+  
+  // Admin - Students
+  searchAdminStudents: (q: string, limit?: number) => 
+    request<{ success: boolean; data: any[] }>(`/api/admin/students/search?q=${encodeURIComponent(q)}&limit=${limit || 20}`),
+  
+  // Admin - Enrollments
+  getAdminEnrollments: (filters?: { status?: string; studentId?: number; subjectId?: number }) => {
+    const params = new URLSearchParams();
+    if (filters?.status) params.append("status", filters.status);
+    if (filters?.studentId) params.append("studentId", String(filters.studentId));
+    if (filters?.subjectId) params.append("subjectId", String(filters.subjectId));
+    return request<{ success: boolean; data: any[] }>(`/api/admin/enrollments?${params.toString()}`);
+  },
+  createAdminEnrollment: (data: { student_id: number; subject_id: number; notes?: string }) => 
+    request<{ success: boolean; data: any }>("/api/admin/enrollments", { method: "POST", body: JSON.stringify(data) }),
+  updateAdminEnrollmentStatus: (id: number, status: string) => 
+    request<{ success: boolean; data: any }>(`/api/admin/enrollments/${id}/status`, { method: "PUT", body: JSON.stringify({ status }) }),
+  deleteAdminEnrollment: (id: number) => 
+    request<{ success: boolean; message: string }>(`/api/admin/enrollments/${id}`, { method: "DELETE" }),
+
+  // Admin - Parents
+  getAdminParents: (filters?: { search?: string; status?: string }) => {
+    const params = new URLSearchParams();
+    if (filters?.search) params.append("search", filters.search);
+    if (filters?.status) params.append("status", filters.status);
+    return request<{ success: boolean; data: any[] }>(`/api/admin/parents?${params.toString()}`);
+  },
+  createAdminParent: (data: { full_name: string; email: string; phone?: string; occupation?: string; address?: string; status?: string; avatar?: string; studentIds?: number[] }) => 
+    request<{ success: boolean; data: any }>("/api/admin/parents", { method: "POST", body: JSON.stringify(data) }),
+  updateAdminParent: (id: number, data: Partial<{ full_name: string; email: string; phone: string; occupation: string; address: string; status: string; studentIds: number[] }>) => 
+    request<{ success: boolean; data: any }>(`/api/admin/parents/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteAdminParent: (id: number) => 
+    request<{ success: boolean; message: string }>(`/api/admin/parents/${id}`, { method: "DELETE" }),
 };

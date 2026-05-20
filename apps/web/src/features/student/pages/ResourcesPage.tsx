@@ -15,14 +15,16 @@ import {
   Play,
   X,
   Check,
+  Loader2,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Sidebar } from "../components/Sidebar";
 import { Topbar } from "../components/Topbar";
+import { api } from "../../../services/api";
 import {
-  fetchAllMaterials,
-  fetchRecentlyViewed,
-  fetchSubjects,
+  subjects as MOCK_SUBJECTS,
+  recentlyViewed as MOCK_RECENT,
+  allMaterials as MOCK_MATERIALS,
   type Material,
   type RecentItem,
   type ResourceKind,
@@ -40,9 +42,10 @@ type ViewerItem = { title: string; kind: ResourceKind };
 const PAGE_SIZE = 8;
 
 export default function ResourcesPage() {
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [recent, setRecent] = useState<RecentItem[]>([]);
-  const [materials, setMaterials] = useState<Material[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>(MOCK_SUBJECTS);
+  const [recent, setRecent] = useState<RecentItem[]>(MOCK_RECENT);
+  const [materials, setMaterials] = useState<Material[]>(MOCK_MATERIALS);
+  const [loading, setLoading] = useState(true);
   const [activeSubject, setActiveSubject] = useState<string | null>(null);
   const [filterType, setFilterType] = useState<string>("All Types");
   const [filterDate, setFilterDate] = useState<string>("Any Time");
@@ -82,16 +85,32 @@ export default function ResourcesPage() {
 
   useEffect(() => {
     let active = true;
-    Promise.all([
-      fetchSubjects(),
-      fetchRecentlyViewed(),
-      fetchAllMaterials(),
-    ]).then(([s, r, m]) => {
-      if (!active) return;
-      setSubjects(s);
-      setRecent(r);
-      setMaterials(m);
-    });
+
+    // Fetch API resources and append to mock data
+    api.getStudentResources()
+      .then((data: any[]) => {
+        if (!active) return;
+        // Transform API data to Material format
+        const apiMaterials: Material[] = data.map((m, i) => ({
+          id: `api-${m.id || i}`,
+          title: m.title || m.name || "Untitled",
+          kind: (m.kind || m.type || "pdf") as ResourceKind,
+          subject: m.subject || m.course || "General",
+          subjectClass: m.subjectClass || "bg-ink-100 text-ink-700",
+          size: m.size || "Unknown size",
+          date: m.date || m.createdAt || new Date().toISOString(),
+          duration: m.duration,
+          primaryAction: (m.primaryAction || "view") as Material["primaryAction"],
+          hasView: m.hasView,
+        }));
+        setMaterials((prev) => [...prev, ...apiMaterials]);
+        setLoading(false);
+      })
+      .catch(() => {
+        // Silently fail - keep showing mock data
+        setLoading(false);
+      });
+
     return () => {
       active = false;
     };

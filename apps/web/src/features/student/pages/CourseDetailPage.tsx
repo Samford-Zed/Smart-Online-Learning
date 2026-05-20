@@ -16,9 +16,11 @@ import {
   X,
   Send,
   ArrowUpRight,
+  Loader2,
 } from "lucide-react";
 import { Sidebar } from "../components/Sidebar";
 import { Topbar } from "../components/Topbar";
+import { api } from "../../../services/api";
 import {
   fetchCourseBySlug,
   type CourseDetail,
@@ -47,11 +49,75 @@ export default function CourseDetailPage() {
   useEffect(() => {
     let active = true;
     setLoading(true);
-    fetchCourseBySlug(slug ?? "").then((c) => {
-      if (!active) return;
-      setCourse(c);
-      setLoading(false);
-    });
+
+    const loadCourse = async () => {
+      try {
+        // Try to fetch from API first
+        const apiCourse = await api.getStudentClassDetails(slug ?? "");
+        if (apiCourse && active) {
+          // Transform API course to CourseDetail format
+          const apiModules = (apiCourse as any).modules || [];
+          const transformed: CourseDetail = {
+            slug: slug ?? "",
+            badge: (apiCourse as any).badge || (apiCourse as any).tagline || "",
+            title: (apiCourse as any).title || (apiCourse as any).name || "Untitled Course",
+            instructor: (apiCourse as any).instructor || (apiCourse as any).teacher || "Unknown",
+            meta: (apiCourse as any).meta || `Semester Course`,
+            progress: (apiCourse as any).progress || 0,
+            instructorBio: {
+              name: (apiCourse as any).instructor || "Unknown",
+              avatar: (apiCourse as any).instructorImage || "https://i.pravatar.cc/80?img=32",
+            },
+            resources: ((apiCourse as any).resources || []).map((r: any, i: number) => ({
+              id: r.id || `resource-${i}`,
+              title: r.title || r.name || `Resource ${i + 1}`,
+              iconKey: r.iconKey || r.icon || "textbook",
+            })),
+            upcoming: ((apiCourse as any).upcoming || []).map((u: any, i: number) => ({
+              id: u.id || `upcoming-${i}`,
+              monthShort: u.monthShort || "NOV",
+              day: u.day || i + 1,
+              title: u.title || u.name || "Upcoming",
+              due: u.due || u.deadline || "TBD",
+            })),
+            modules: apiModules.map((m: any, i: number) => {
+              const lessons = (m.lessons || []);
+              return {
+                id: m.id || `module-${i}`,
+                topic: `TOPIC ${i + 1}`,
+                state: i === 0 ? "current" : "locked" as const,
+                title: m.title || m.name || `Module ${i + 1}`,
+                progress: i === 0 ? Math.round((lessons.filter((l: any) => l.status === "completed").length / Math.max(lessons.length, 1)) * 100) : null,
+                lockedMeta: i > 0 ? `${lessons.length} Lessons` : undefined,
+                lessons: lessons.map((l: any, j: number) => ({
+                  id: String(l.id) || `lesson-${j}`,
+                  index: `${i + 1}.${j + 1}`,
+                  title: l.title || l.name || `Lesson ${j + 1}`,
+                  meta: l.meta || (l.type === "video" ? `${l.duration || "10 min"} video` : "Reading & Quiz"),
+                  metaIcon: l.metaIcon || (l.type === "video" ? "video" : "book"),
+                  status: (l.status || "locked") as LessonStatus,
+                  unlockHint: l.status === "locked" && j > 0 ? `Complete lesson ${j} to unlock` : undefined,
+                })),
+              };
+            }),
+          };
+          setCourse(transformed);
+          setLoading(false);
+          return;
+        }
+      } catch {
+        // API failed, fall through to mock
+      }
+
+      // Try mock data as fallback
+      const mockCourse = await fetchCourseBySlug(slug ?? "");
+      if (active) {
+        setCourse(mockCourse);
+        setLoading(false);
+      }
+    };
+
+    loadCourse();
     return () => {
       active = false;
     };
