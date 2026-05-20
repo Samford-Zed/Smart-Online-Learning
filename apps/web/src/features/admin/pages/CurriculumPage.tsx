@@ -24,7 +24,6 @@ interface Subject {
   grade: number;
   module_count: number;
   lesson_count: number;
-  created_at: string;
 }
 
 export default function CurriculumPage() {
@@ -71,11 +70,11 @@ export default function CurriculumPage() {
   );
 
   return (
-    <div className="min-h-screen bg-surface-50">
+    <div className="flex min-h-screen bg-surface-50 font-sans text-ink-900">
       <AdminSidebar />
-      <div className="lg:ml-64">
+      <div className="flex min-w-0 flex-1 flex-col">
         <AdminTopbar />
-        <main className="p-6">
+        <main className="mx-auto w-full max-w-[1280px] flex-1 px-6 pb-12 pt-6 overflow-auto">
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <div>

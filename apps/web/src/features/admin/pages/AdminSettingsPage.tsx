@@ -84,9 +84,9 @@ export default function AdminSettingsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface-50">
+      <div className="flex min-h-screen bg-surface-50">
         <AdminSidebar />
-        <div className="lg:ml-64 flex items-center justify-center min-h-screen">
+        <div className="flex min-w-0 flex-1 items-center justify-center">
           <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
         </div>
       </div>
@@ -94,11 +94,11 @@ export default function AdminSettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-50">
+    <div className="flex min-h-screen bg-surface-50 font-sans text-ink-900">
       <AdminSidebar />
-      <div className="lg:ml-64">
+      <div className="flex min-w-0 flex-1 flex-col">
         <AdminTopbar />
-        <main className="p-6">
+        <main className="mx-auto w-full max-w-[1280px] flex-1 px-6 pb-12 pt-6 overflow-auto">
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
@@ -168,7 +168,7 @@ export default function AdminSettingsPage() {
             </section>
 
             {/* Academic Settings */}
-            <section className="bg-white rounded-2xl p-6 shadow-card">
+            <SettingsSection title="Academic Settings">
               <div className="flex items-center gap-3 mb-6">
                 <Calendar className="w-6 h-6 text-blue-600" />
                 <h2 className="text-lg font-semibold text-ink-900">Academic Settings</h2>
@@ -214,15 +214,10 @@ export default function AdminSettingsPage() {
                   />
                 </div>
               </div>
-            </section>
+            </SettingsSection>
 
             {/* System Configuration */}
-            <section className="bg-white rounded-2xl p-6 shadow-card">
-              <div className="flex items-center gap-3 mb-6">
-                <ToggleLeft className="w-6 h-6 text-blue-600" />
-                <h2 className="text-lg font-semibold text-ink-900">System Configuration</h2>
-              </div>
-              
+            <SettingsSection title="System Configuration" description="Configure system settings">
               <div className="space-y-4">
                 <div className="flex items-center justify-between p-4 bg-surface-50 rounded-xl">
                   <div className="flex items-center gap-3">
@@ -262,10 +257,22 @@ export default function AdminSettingsPage() {
                   </label>
                 </div>
               </div>
-            </section>
+            </SettingsSection>
           </div>
         </main>
       </div>
     </div>
+  );
+}
+
+function SettingsSection({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
+  return (
+    <section className="bg-white rounded-xl border border-slate-200 p-6 mb-6">
+      <div className="mb-4">
+        <h2 className="text-lg font-semibold text-ink-900">{title}</h2>
+        {description && <p className="text-sm text-ink-500">{description}</p>}
+      </div>
+      {children}
+    </section>
   );
 }

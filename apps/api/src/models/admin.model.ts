@@ -626,7 +626,7 @@ export async function getAllParents(search?: string, status?: string): Promise<a
           'id', s.id,
           'name', s.full_name,
           'grade', s.grade_level,
-          'studentId', s.student_id
+          'studentId', s.id
         ) ORDER BY s.full_name
       ) FILTER (WHERE s.id IS NOT NULL), '[]') as children
     FROM parents p
@@ -678,13 +678,21 @@ export async function createParent(data: {
     );
     const parent = parentResult.rows[0];
 
-    // Link students if provided
+    // Link students if provided - fetch email first
     if (data.studentIds && data.studentIds.length > 0) {
       for (const studentId of data.studentIds) {
-        await client.query(
-          `INSERT INTO parent_student_links (parent_id, student_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-          [parent.id, studentId]
+        // Get student email
+        const studentResult = await client.query(
+          `SELECT email FROM users WHERE id = $1 AND role = 'student'`,
+          [studentId]
         );
+        if (studentResult.rows.length > 0 && studentResult.rows[0].email) {
+          const studentEmail = studentResult.rows[0].email;
+          await client.query(
+            `INSERT INTO parent_student_links (parent_id, student_id, student_email) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+            [parent.id, studentId, studentEmail]
+          );
+        }
       }
     }
 
@@ -738,10 +746,18 @@ export async function updateParent(parentId: number, data: Partial<{
     if (data.studentIds !== undefined) {
       await client.query('DELETE FROM parent_student_links WHERE parent_id = $1', [parentId]);
       for (const studentId of data.studentIds) {
-        await client.query(
-          `INSERT INTO parent_student_links (parent_id, student_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-          [parentId, studentId]
+        // Get student email
+        const studentResult = await client.query(
+          `SELECT email FROM users WHERE id = $1 AND role = 'student'`,
+          [studentId]
         );
+        if (studentResult.rows.length > 0 && studentResult.rows[0].email) {
+          const studentEmail = studentResult.rows[0].email;
+          await client.query(
+            `INSERT INTO parent_student_links (parent_id, student_id, student_email) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+            [parentId, studentId, studentEmail]
+          );
+        }
       }
     }
 

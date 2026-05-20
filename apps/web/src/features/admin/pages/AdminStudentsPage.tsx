@@ -1,11 +1,12 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Search, Plus, Filter, MoreHorizontal, X, ChevronLeft, ChevronRight, Eye, Edit2, Trash2,
   Ban, Check, Mail, Phone, MapPin, Users as UsersIcon, GraduationCap, BookOpen, Award,
-  AlertTriangle, User, Calendar, CheckCircle2, Pause, UserPlus,
+  AlertTriangle, User, Calendar, CheckCircle2, Pause, UserPlus, Loader2,
 } from "lucide-react";
 import { AdminSidebar } from "../components/AdminSidebar";
 import { AdminTopbar } from "../components/AdminTopbar";
+import { api } from "../../../services/api";
 
 type StudentStatus = "Active" | "Inactive" | "Suspended";
 
@@ -51,7 +52,7 @@ const SECTIONS = ["A","B","C"];
 const PAGE_SIZE = 6;
 
 export default function AdminStudentsPage() {
-  const [students, setStudents] = useState<Student[]>(INITIAL);
+  const [students, setStudents] = useState<Student[]>([]);
   const [search, setSearch] = useState("");
   const [gradeFilter, setGradeFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState<"All" | StudentStatus>("All");
@@ -62,8 +63,49 @@ export default function AdminStudentsPage() {
   const [deleteTarget, setDeleteTarget] = useState<Student | null>(null);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(null), 2400); }
+
+  // Load students from API
+  useEffect(() => {
+    loadStudents();
+  }, []);
+
+  async function loadStudents() {
+    try {
+      setLoading(true);
+      const response = await api.getAdminUsers({ role: 'student', limit: 1000 });
+      if (response.success) {
+        // Transform backend data to frontend format
+        const transformed = response.data.users.map((u: any) => ({
+          id: String(u.id),
+          name: u.name,
+          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.name}`,
+          studentId: u.student_id || `PRE${String(u.id).padStart(5, '0')}`,
+          grade: u.grade_level ? `Grade ${u.grade_level}` : 'Grade 9',
+          section: u.section || 'A',
+          subject: u.subject || 'Science',
+          email: u.email,
+          phone: u.phone || '',
+          address: u.address || '',
+          parent: u.parent_name || '',
+          parentPhone: u.parent_phone || '',
+          dob: u.date_of_birth || '',
+          joinDate: u.created_at?.split('T')[0] || new Date().toISOString().slice(0,10),
+          gpa: u.gpa || 3.0,
+          attendance: u.attendance || 100,
+          status: (u.status || 'Active') as StudentStatus,
+        }));
+        setStudents(transformed);
+      }
+    } catch (error) {
+      console.error("Failed to load students:", error);
+      showToast("Failed to load students");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   const filtered = useMemo(() => students.filter(s => {
     const q = search.toLowerCase();
@@ -182,7 +224,7 @@ export default function AdminStudentsPage() {
                       className="border-b border-ink-50 last:border-0 cursor-pointer transition hover:bg-violet-50/30">
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-2.5">
-                          <img src={s.avatar} alt={s.name} className="size-9 rounded-full object-cover ring-2 ring-violet-100" />
+                          <img src={s.avatar} alt={s.name} className="size-9 rounded-full bg-surface-100 object-cover ring-2 ring-violet-100" />
                           <div>
                             <p className="font-semibold text-ink-900">{s.name}</p>
                             <p className="text-xs text-ink-400">{s.email}</p>
@@ -231,7 +273,10 @@ export default function AdminStudentsPage() {
                       </td>
                     </tr>
                   ))}
-                  {paged.length === 0 && (
+                  {loading && (
+                    <tr><td colSpan={7} className="px-5 py-12 text-center"><Loader2 className="mx-auto size-8 animate-spin text-violet-500" /><p className="mt-2 text-sm text-ink-400">Loading students...</p></td></tr>
+                  )}
+                  {!loading && paged.length === 0 && (
                     <tr><td colSpan={7} className="px-5 py-12 text-center text-sm text-ink-400">No students match your filters.</td></tr>
                   )}
                 </tbody>
@@ -294,7 +339,7 @@ function StudentDetail({ student: s, onClose, onEdit, onDelete, onStatusChange }
         </div>
         <div className="px-6">
           <div className="-mt-14 mb-4 flex items-end gap-4">
-            <img src={s.avatar} alt={s.name} className="size-24 rounded-2xl border-4 border-white object-cover shadow-lg" />
+            <img src={s.avatar} alt={s.name} className="size-24 rounded-2xl border-4 border-white bg-surface-100 object-cover shadow-lg" />
             <div className="pb-2">
               <h2 className="text-xl font-bold text-ink-900">{s.name}</h2>
               <p className="text-xs text-ink-500 font-mono">{s.studentId}</p>
@@ -392,7 +437,7 @@ function StudentModal({ mode, student, onClose, onSave }: {
   const [form, setForm] = useState<Student>({
     id: seed.id || `s${Date.now()}`,
     name: seed.name || "",
-    avatar: seed.avatar || `https://i.pravatar.cc/120?img=${Math.floor(Math.random()*70)+1}`,
+    avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed.name || 'new'}`,
     studentId: seed.studentId || `PRE${Math.floor(Math.random()*90000)+10000}`,
     grade: seed.grade || "Grade 9",
     section: seed.section || "A",
