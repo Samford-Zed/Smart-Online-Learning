@@ -38,7 +38,7 @@ export const landingContent = {
     },
     /** Education-themed Unsplash photo of a smiling student. */
     image:
-      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=900&q=80",
     imageAlt: "A smiling student holding her notebooks",
   },
 

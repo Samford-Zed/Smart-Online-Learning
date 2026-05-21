@@ -152,6 +152,17 @@ export async function getUserById(userId: number): Promise<AdminUser | null> {
   return result.rows[0] as AdminUser || null;
 }
 
+export async function getTeachers(
+  filters: {
+    search?: string;
+    isActive?: boolean;
+  } = {},
+  limit: number = 50,
+  offset: number = 0
+): Promise<{ users: AdminUser[]; total: number }> {
+  return getAllUsers({ role: "teacher", ...filters }, limit, offset);
+}
+
 export async function updateUser(
   userId: number,
   data: Partial<CreateUserData> & { is_active?: boolean }

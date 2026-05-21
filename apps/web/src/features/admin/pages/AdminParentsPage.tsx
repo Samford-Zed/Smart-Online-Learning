@@ -59,8 +59,25 @@ export default function AdminParentsPage() {
     setLoading(true);
     try {
       const response = await api.getAdminParents();
-      if (response.success) {
-        setParents(response.data);
+      if (response.success && Array.isArray(response.data)) {
+        const mapped: Parent[] = response.data.map((p: any) => ({
+          id: String(p.id),
+          name: p.name || p.full_name || "Unknown",
+          avatar: p.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.name || p.id}`,
+          email: p.email || "",
+          phone: p.phone || "",
+          occupation: p.occupation || "",
+          address: p.address || "",
+          status: (p.status === "Inactive" ? "Inactive" : "Active") as "Active" | "Inactive",
+          children: Array.isArray(p.children)
+            ? p.children.map((c: any) => ({
+                name: c.name || "",
+                grade: c.grade ? `Grade ${c.grade}` : "",
+                studentId: String(c.studentId || c.id || ""),
+              }))
+            : [],
+        }));
+        setParents(mapped);
       }
     } catch (error) {
       console.error("Failed to load parents:", error);
@@ -83,7 +100,7 @@ export default function AdminParentsPage() {
   const filtered = parents.filter(p => {
     const q = search.toLowerCase();
     const matchSearch = p.name.toLowerCase().includes(q) || p.email.toLowerCase().includes(q) ||
-      p.phone.includes(q) || p.children.some(c => c.name.toLowerCase().includes(q) || c.studentId.toLowerCase().includes(q));
+      (p.phone || "").includes(q) || p.children.some(c => c.name.toLowerCase().includes(q) || c.studentId.toLowerCase().includes(q));
     const matchStatus = statusFilter === "All" || p.status === statusFilter;
     return matchSearch && matchStatus;
   });
@@ -122,13 +139,17 @@ export default function AdminParentsPage() {
         studentIds: data.children?.map((c: any) => c.id) || []
       });
       if (response.success) {
-        await loadParents(); // Reload to get correct structure
+        await loadParents();
         showToast(`${data.name} added successfully`);
         setShowAdd(false);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to add parent:", error);
-      showToast("Failed to add parent");
+      if (error?.message?.includes("duplicate") || error?.message?.includes("already exists") || error?.message?.includes("23505")) {
+        showToast("A parent with this email already exists");
+      } else {
+        showToast("Failed to add parent");
+      }
     }
   }
 

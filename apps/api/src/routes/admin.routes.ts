@@ -624,8 +624,11 @@ router.post("/parents", async (req, res) => {
     });
     
     res.status(201).json({ success: true, data: parent });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Create parent error:", error);
+    if (error?.code === '23505' || error?.message?.includes('duplicate key')) {
+      return res.status(409).json({ success: false, message: "A parent with this email already exists" });
+    }
     res.status(500).json({ success: false, message: "Failed to create parent" });
   }
 });
