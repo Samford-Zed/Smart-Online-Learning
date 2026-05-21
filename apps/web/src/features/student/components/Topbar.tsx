@@ -11,10 +11,12 @@ import {
   Star,
   ChevronDown,
   X,
+  User,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useT } from "@/i18n/I18nProvider";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { api } from "@/services/api";
 
 type Notif = { id: string; text: string; sub: string; unread: boolean };
 
@@ -38,6 +40,73 @@ export function Topbar() {
   const notifsRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
 
+  // Real user data
+  const [user, setUser] = useState<{ id: number; fullName: string; email: string; role: string; grade_level?: string } | null>(null);
+
+  // Load current user and notifications on mount
+  useEffect(() => {
+    // Try to get from localStorage first
+    const stored = localStorage.getItem("user");
+    let localUser = null;
+    if (stored) {
+      try { 
+        localUser = JSON.parse(stored);
+        setUser(localUser); 
+      } catch {}
+    }
+    // Also try to fetch from API for latest data (but don't overwrite fullName with username)
+    api.getMe().then((u) => {
+      if (u) {
+        // Preserve the localStorage fullName if API returns a username-like name
+        const apiFullName = u.fullName || "";
+        const localFullName = localUser?.fullName || "";
+        // If API returns something like "samizenebe508" (username with numbers), keep local name
+        const isApiUsername = /\d/.test(apiFullName) || apiFullName === u.email?.split('@')[0];
+        const mergedUser = {
+          ...u,
+          fullName: (isApiUsername && localFullName) ? localFullName : apiFullName,
+        };
+        setUser(mergedUser);
+        localStorage.setItem("user", JSON.stringify(mergedUser));
+      }
+    }).catch(() => {
+      // Fallback: already loaded from localStorage
+    });
+
+    // Fetch real notifications from API
+    loadNotifications();
+  }, []);
+
+  // Load notifications from API
+  async function loadNotifications() {
+    try {
+      const response = await api.getStudentNotifications();
+      if (response && Array.isArray(response) && response.length > 0) {
+        // Transform API notifications to Notif format
+        const apiNotifs: Notif[] = response.map((n: any) => ({
+          id: String(n.id || n.notification_id || `api-${Math.random()}`),
+          text: n.title || n.message || n.text || "New notification",
+          sub: n.subtitle || n.timestamp || n.time || "Just now",
+          unread: n.is_read === false || n.read === false || n.unread === true,
+        }));
+        setNotifs(apiNotifs);
+      }
+      // If no API notifications, keep mock data
+    } catch (error) {
+      console.error("Failed to load notifications:", error);
+      // Keep mock data as fallback
+    }
+  }
+
+  const userName = user?.fullName || user?.email?.split('@')[0] || "Student";
+  const userFirstName = userName.split(' ')[0];
+  const userEmail = user?.email || "student@school.edu";
+  const userGrade = user?.grade_level || "Grade 10";
+  const userRole = user?.role || "Student";
+  const userAvatar = user?.fullName 
+    ? `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.fullName}`
+    : null;
+
   const unreadCount = notifs.filter((n) => n.unread).length;
 
   useEffect(() => {
@@ -57,8 +126,16 @@ export function Topbar() {
     navigate(`/student/resources?q=${encodeURIComponent(query.trim())}`);
   }
 
-  function markAllRead() {
+  async function markAllRead() {
+    // Mark all as read locally
     setNotifs((ns) => ns.map((n) => ({ ...n, unread: false })));
+    // Try to sync with backend
+    try {
+      const unreadNotifs = notifs.filter((n) => n.unread);
+      await Promise.all(unreadNotifs.map((n) => api.markNotificationRead(n.id)));
+    } catch (error) {
+      // Silent fail - already marked as read locally
+    }
   }
 
   function dismissNotif(id: string) {
@@ -158,22 +235,34 @@ export function Topbar() {
             onClick={() => { setShowProfile((o) => !o); setShowNotifs(false); }}
             className="flex items-center gap-2 rounded-full border border-ink-200 bg-white py-0.5 pl-0.5 pr-2.5 transition hover:bg-ink-50"
           >
-            <img
-              src="https://i.pravatar.cc/80?img=47"
-              alt="Elias avatar"
-              className="size-8 rounded-full border-2 border-white object-cover shadow-card"
-            />
-            <span className="hidden text-xs font-semibold text-ink-900 sm:block">Elias</span>
+            {userAvatar ? (
+              <img
+                src={userAvatar}
+                alt={`${userFirstName} avatar`}
+                className="size-8 rounded-full border-2 border-white bg-surface-100 object-cover shadow-card"
+              />
+            ) : (
+              <span className="flex size-8 items-center justify-center rounded-full border-2 border-white bg-brand/10 text-brand">
+                <User className="size-4" />
+              </span>
+            )}
+            <span className="hidden text-xs font-semibold text-ink-900 sm:block">{userFirstName}</span>
             <ChevronDown className={`size-3.5 text-ink-400 transition-transform ${showProfile ? "rotate-180" : ""}`} aria-hidden />
           </button>
 
           {showProfile && (
             <div className="absolute right-0 top-11 z-30 w-52 rounded-2xl border border-ink-200 bg-white shadow-xl">
               <div className="flex items-center gap-3 border-b border-ink-100 px-4 py-3.5">
-                <img src="https://i.pravatar.cc/80?img=47" alt="" className="size-10 rounded-full object-cover ring-2 ring-brand/20" />
+                {userAvatar ? (
+                  <img src={userAvatar} alt="" className="size-10 rounded-full bg-surface-100 object-cover ring-2 ring-brand/20" />
+                ) : (
+                  <span className="flex size-10 items-center justify-center rounded-full bg-brand/10 text-brand ring-2 ring-brand/20">
+                    <User className="size-5" />
+                  </span>
+                )}
                 <div>
-                  <p className="text-sm font-bold text-ink-900">Elias Bekele</p>
-                  <p className="text-xs text-ink-500">Grade 10 · Student</p>
+                  <p className="text-sm font-bold text-ink-900">{userName}</p>
+                  <p className="text-xs text-ink-500">{userGrade} · {userRole}</p>
                 </div>
               </div>
               <div className="py-1.5">

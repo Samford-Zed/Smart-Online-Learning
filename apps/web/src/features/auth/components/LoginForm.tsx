@@ -10,10 +10,6 @@ import {
   ArrowRight,
   Loader2,
   AlertCircle,
-  GraduationCap,
-  BookOpen,
-  Shield,
-  Users,
 } from "lucide-react";
 import {
   loginSchema,
@@ -29,13 +25,6 @@ const ROLE_REDIRECTS: Record<string, string> = {
   admin: "/admin/dashboard",
 };
 
-const ROLE_OPTIONS = [
-  { value: "student", label: "Student", icon: GraduationCap, color: "text-brand" },
-  { value: "teacher", label: "Teacher", icon: BookOpen, color: "text-emerald-600" },
-  { value: "parent", label: "Parent", icon: Users, color: "text-violet-600" },
-  { value: "admin", label: "Admin", icon: Shield, color: "text-amber-600" },
-];
-
 export function LoginForm() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
@@ -44,16 +33,12 @@ export function LoginForm() {
   const {
     register,
     handleSubmit,
-    watch,
-    setValue,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: loginDefaultValues,
     mode: "onBlur",
   });
-
-  const selectedRole = watch("role");
 
   const onSubmit = async (values: LoginFormValues) => {
     setServerError(null);
@@ -107,36 +92,6 @@ export function LoginForm() {
         >
           Create Account
         </Link>
-      </div>
-
-      {/* Role selector pills */}
-      <div className="flex flex-col gap-2">
-        <span className="text-xs font-semibold uppercase tracking-wider text-ink-400">
-          Sign in as
-        </span>
-        <div className="grid grid-cols-4 gap-2">
-          {ROLE_OPTIONS.map(({ value, label, icon: Icon, color }) => {
-            const active = selectedRole === value;
-            return (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setValue("role", value as LoginFormValues["role"], { shouldValidate: true })}
-                className={`flex flex-col items-center gap-1.5 rounded-xl border-2 py-3 text-xs font-semibold transition ${
-                  active
-                    ? "border-brand bg-brand/5 text-brand shadow-sm"
-                    : "border-ink-200 bg-white text-ink-600 hover:border-ink-300 hover:bg-ink-50"
-                }`}
-              >
-                <Icon className={`size-5 ${active ? "text-brand" : color}`} />
-                {label}
-              </button>
-            );
-          })}
-        </div>
-        {errors.role && (
-          <span className="text-xs text-red-600">{errors.role.message}</span>
-        )}
       </div>
 
       {/* Server error */}

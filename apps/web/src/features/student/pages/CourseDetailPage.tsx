@@ -51,10 +51,12 @@ export default function CourseDetailPage() {
     setLoading(true);
 
     const loadCourse = async () => {
+      let apiSuccess = false;
       try {
         // Try to fetch from API first
         const apiCourse = await api.getStudentClassDetails(slug ?? "");
-        if (apiCourse && active) {
+        // Check if API returned valid data with modules
+        if (apiCourse && active && (apiCourse as any).modules && (apiCourse as any).modules.length > 0) {
           // Transform API course to CourseDetail format
           const apiModules = (apiCourse as any).modules || [];
           const transformed: CourseDetail = {
@@ -66,7 +68,7 @@ export default function CourseDetailPage() {
             progress: (apiCourse as any).progress || 0,
             instructorBio: {
               name: (apiCourse as any).instructor || "Unknown",
-              avatar: (apiCourse as any).instructorImage || "https://i.pravatar.cc/80?img=32",
+              avatar: (apiCourse as any).instructorImage || `https://api.dicebear.com/7.x/avataaars/svg?seed=${(apiCourse as any).instructor || "Teacher"}`,
             },
             resources: ((apiCourse as any).resources || []).map((r: any, i: number) => ({
               id: r.id || `resource-${i}`,
@@ -103,17 +105,19 @@ export default function CourseDetailPage() {
           };
           setCourse(transformed);
           setLoading(false);
-          return;
+          apiSuccess = true;
         }
       } catch {
         // API failed, fall through to mock
       }
 
-      // Try mock data as fallback
-      const mockCourse = await fetchCourseBySlug(slug ?? "");
-      if (active) {
-        setCourse(mockCourse);
-        setLoading(false);
+      // If API failed or returned empty, try mock data as fallback
+      if (!apiSuccess) {
+        const mockCourse = await fetchCourseBySlug(slug ?? "");
+        if (active) {
+          setCourse(mockCourse);
+          setLoading(false);
+        }
       }
     };
 

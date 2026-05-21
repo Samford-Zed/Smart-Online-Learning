@@ -307,7 +307,9 @@ function TaskCard({ task: t, idx, onOpen, onMove, onEdit, onDelete }: {
 
       <div className="mt-3 flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <img src={t.assigneeAvatar} alt={t.assignee} className="size-6 rounded-full object-cover ring-2 ring-white" />
+          <div className="size-6 rounded-full bg-violet-100 flex items-center justify-center ring-2 ring-white">
+            <User className="size-4 text-violet-600" />
+          </div>
           <span className="truncate text-[11px] text-ink-500 max-w-[90px]">{t.assignee}</span>
         </div>
         {t.due && (

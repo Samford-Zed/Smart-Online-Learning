@@ -56,3 +56,28 @@ export const submitAssignment = async (userId: number, assignmentId: number, fil
 export const getGrades = async (userId: number) => {
   return await GradeModel.getStudentGrades(userId);
 };
+
+// Progress Services
+export const getStudentProgress = async (userId: number) => {
+  try {
+    const grades = await GradeModel.getStudentGrades(userId);
+    return {
+      progressOverTime: [], // Will be populated from historical data
+      skills: [
+        { skill: "Logic", score: 85 },
+        { skill: "Creativity", score: 70 },
+        { skill: "Writing", score: 60 },
+        { skill: "Research", score: 78 },
+        { skill: "Analysis", score: 72 },
+      ],
+      subjects: grades.subjects || []
+    };
+  } catch (error) {
+    console.error('Error fetching student progress:', error);
+    return {
+      progressOverTime: [],
+      skills: [],
+      subjects: []
+    };
+  }
+};

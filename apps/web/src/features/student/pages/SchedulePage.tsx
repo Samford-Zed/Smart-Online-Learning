@@ -166,6 +166,12 @@ const KIND_STYLES: Record<
   },
 };
 
+const DEFAULT_STYLE = KIND_STYLES.live; // fallback style
+
+function getEventStyle(kind: EventKind) {
+  return KIND_STYLES[kind] || DEFAULT_STYLE;
+}
+
 type View = "Day" | "Week" | "Month";
 
 /* ----------------------------- Page component ----------------------------- */
@@ -431,7 +437,7 @@ export default function SchedulePage() {
 
                   {/* Events */}
                   {allEvents.map((ev) => {
-                    const style = KIND_STYLES[ev.kind];
+                    const style = getEventStyle(ev.kind);
                     const rowStart = HOURS.indexOf(ev.startHour) + 1;
                     const rowSpan = ev.endHour - ev.startHour;
                     return (
@@ -662,7 +668,7 @@ function DayView({
                 {hourEvents
                   .filter((e) => e.startHour === h)
                   .map((ev) => {
-                    const style = KIND_STYLES[ev.kind];
+                    const style = getEventStyle(ev.kind);
                     return (
                       <button
                         key={ev.id}
@@ -801,7 +807,7 @@ function MonthView({
 
               <ul className="mt-1 flex flex-col gap-0.5">
                 {dateEvents.slice(0, 2).map((ev) => {
-                  const style = KIND_STYLES[ev.kind];
+                  const style = getEventStyle(ev.kind);
                   return (
                     <li key={ev.id}>
                       <button
@@ -922,7 +928,7 @@ function AllUpcomingModal({
           </h3>
           <ul className="mt-2 flex flex-col gap-2">
             {allEvents.map((ev) => {
-              const style = KIND_STYLES[ev.kind];
+              const style = getEventStyle(ev.kind);
               const day = DAYS[ev.day];
               return (
                 <li key={ev.id}>
@@ -988,7 +994,7 @@ function EventModal({
   event: CalendarEvent;
   onClose: () => void;
 }) {
-  const style = KIND_STYLES[event.kind];
+  const style = getEventStyle(event.kind);
   return (
     <div
       role="dialog"
@@ -1068,7 +1074,7 @@ function Dot({ kind }: { kind: EventKind }) {
   return (
     <span
       className="inline-block size-1.5 rounded-full"
-      style={{ backgroundColor: KIND_STYLES[kind].border }}
+      style={{ backgroundColor: getEventStyle(kind).border }}
     />
   );
 }

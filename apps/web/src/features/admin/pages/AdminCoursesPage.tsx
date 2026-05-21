@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  Search, Plus, BookOpen, Users, Clock, MoreHorizontal, X, Star, Eye, Pencil, Trash2,
+  Search, Plus, BookOpen, Users, User, Clock, MoreHorizontal, X, Star, Eye, Pencil, Trash2,
   Check, AlertTriangle, ChevronLeft, ChevronRight, GraduationCap, FileText, Tag, Calendar, ListChecks,
 } from "lucide-react";
 import { AdminSidebar } from "../components/AdminSidebar";
@@ -173,7 +173,9 @@ export default function AdminCoursesPage() {
                   <span className="mt-1 text-xs text-ink-500">{c.subject} · {c.level}</span>
 
                   <div className="mt-3 flex items-center gap-2">
-                    <img src={c.teacherAvatar} alt={c.teacher} className="size-6 rounded-full object-cover ring-2 ring-violet-100" />
+                    <div className="size-6 rounded-full bg-violet-100 flex items-center justify-center ring-2 ring-violet-100">
+                      <User className="size-4 text-violet-600" />
+                    </div>
                     <span className="text-xs text-ink-600 truncate">{c.teacher}</span>
                   </div>
 

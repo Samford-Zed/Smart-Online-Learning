@@ -40,21 +40,51 @@ export default function GradesPage() {
   const [progressData, setProgressData] = useState(MOCK_PROGRESS);
   const [skillsData, setSkillsData] = useState(MOCK_SKILLS);
   const [subjectData, setSubjectData] = useState(MOCK_SUBJECTS);
+  const [userName, setUserName] = useState<string>("Student");
+  const [userAvatar, setUserAvatar] = useState<string>("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Get user info from localStorage
+    const stored = localStorage.getItem("user");
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        const fullName = parsed.fullName || "";
+        const firstName = fullName.split(" ")[0] || "Student";
+        setUserName(firstName);
+        // Generate avatar if not present
+        if (parsed.photoUrl) {
+          setUserAvatar(parsed.photoUrl);
+        } else if (fullName) {
+          setUserAvatar(`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(fullName)}`);
+        }
+      } catch {}
+    }
+
     // Fetch API grades and merge with mock data
     api.getStudentGrades()
-      .then((data: any[]) => {
-        // Transform API grades and append to any existing
-        const apiGrades = data.map((g) => ({
-          id: `api-${g.id}`,
-          subject: g.subject || g.course || "General",
-          score: g.score || g.grade || 0,
-          grade: g.letterGrade || g.grade || "N/A",
-          color: g.color || "bg-brand",
+      .then((data: any) => {
+        // Handle both array and object responses
+        const gradesArray = Array.isArray(data) ? data : (data.subjects || []);
+        // Transform API grades and merge with a little mock data
+        const apiGrades = gradesArray.map((g: any) => ({
+          id: `api-${g.id || Math.random()}`,
+          subject: g.name || g.subject || g.course || "General",
+          score: g.score || 0,
+          grade: g.grade || "N/A",
+          color: g.score >= 90 ? "bg-emerald-500" : g.score >= 80 ? "bg-blue-500" : g.score >= 70 ? "bg-yellow-500" : "bg-red-500",
         }));
-        setGrades((prev) => [...prev, ...apiGrades]);
+        // Keep some mock data if API returns empty
+        if (apiGrades.length > 0) {
+          setGrades(apiGrades);
+        } else {
+          // Fallback to minimal mock data
+          setGrades([
+            { id: "mock-1", subject: "Mathematics", score: 0, grade: "N/A", color: "bg-brand" },
+            { id: "mock-2", subject: "Science", score: 0, grade: "N/A", color: "bg-brand" },
+          ]);
+        }
 
         // Also fetch progress/skills if available
         return api.getStudentProgress();
@@ -187,6 +217,8 @@ export default function GradesPage() {
           <EncouragementBanner
             booking={bookingState}
             onBook={handleBookSession}
+            userName={userName}
+            userAvatar={userAvatar}
           />
         </main>
       </div>
@@ -420,9 +452,13 @@ function TeacherRemarksCard() {
 function EncouragementBanner({
   booking,
   onBook,
+  userName = "Student",
+  userAvatar,
 }: {
   booking: "idle" | "booking" | "booked";
   onBook: () => void;
+  userName?: string;
+  userAvatar?: string;
 }) {
   return (
     <section
@@ -432,9 +468,13 @@ function EncouragementBanner({
       }}
     >
       <div className="flex items-start gap-3">
-        <PartyPopper className="size-6 shrink-0 text-amber-300" aria-hidden />
+        {userAvatar ? (
+          <img src={userAvatar} alt={userName} className="size-10 rounded-full bg-white/20" />
+        ) : (
+          <PartyPopper className="size-6 shrink-0 text-amber-300" aria-hidden />
+        )}
         <div>
-          <h3 className="text-lg font-bold">Great progress, Elias!</h3>
+          <h3 className="text-lg font-bold">Great progress, {userName}!</h3>
           <p className="mt-1 max-w-md text-sm text-white/80">
             You're on track for a fantastic semester. Let's discuss your next
             steps and college prep.

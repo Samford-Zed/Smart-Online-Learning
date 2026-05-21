@@ -1,9 +1,6 @@
 import { z } from "zod";
 
 export const loginSchema = z.object({
-  role: z.enum(["student", "teacher", "parent", "admin"], {
-    errorMap: () => ({ message: "Please select a role" }),
-  }),
   email: z
     .string()
     .min(1, "Email is required")
@@ -18,7 +15,6 @@ export const loginSchema = z.object({
 export type LoginFormValues = z.infer<typeof loginSchema>;
 
 export const loginDefaultValues: LoginFormValues = {
-  role: "student",
   email: "",
   password: "",
   rememberMe: false,

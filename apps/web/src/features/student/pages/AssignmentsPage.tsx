@@ -16,7 +16,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { Sidebar } from "../components/Sidebar";
 import { Topbar } from "../components/Topbar";
 import { api } from "../../../services/api";
-import { assignments as MOCK_ASSIGNMENTS } from "../data/assignmentsData";
 
 // Types matching API response
 type Assignment = {
@@ -24,10 +23,12 @@ type Assignment = {
   title: string;
   subject: string;
   dueDate: string;
+  due?: string; // Alias for dueDate from API
   status: "pending" | "in-progress" | "submitted" | "graded";
   score?: number;
   maxScore: number;
   type: string;
+  action?: "submit" | "view" | "continue" | "feedback"; // From API
 };
 
 type StatusKey = "pending" | "in-progress" | "submitted" | "graded";
@@ -53,40 +54,27 @@ export default function AssignmentsPage() {
   useEffect(() => {
     let active = true;
 
-    // Start with mock assignments
-    const mockItems: Assignment[] = MOCK_ASSIGNMENTS.map((a) => ({
-      id: a.id,
-      title: a.title,
-      subject: a.subject,
-      dueDate: a.due,
-      status: a.status as Assignment["status"],
-      score: a.score !== "-" && a.score !== "Pending Grading" ? parseInt(a.score) : undefined,
-      maxScore: a.maxPoints,
-      type: "Assignment",
-    }));
-    setItems(mockItems);
-
-    // Fetch and append API assignments
+    // Fetch real assignments from API
     api.getStudentAssignments()
       .then((data: any[]) => {
         if (!active) return;
         // Transform API data to Assignment format
         const apiItems: Assignment[] = data.map((a) => ({
-          id: `api-${a.id || a.assignment_id}`,
+          id: String(a.id || a.assignment_id),
           title: a.title || a.name || "Untitled",
           subject: a.subject || a.course || "General",
-          dueDate: a.dueDate || a.due_date || new Date().toISOString(),
+          dueDate: a.dueDate || a.due_date || a.due || new Date().toISOString(),
           status: (a.status || "pending") as Assignment["status"],
           score: a.score,
           maxScore: a.maxScore || a.max_score || 100,
           type: a.type || "Assignment",
         }));
-        // Merge: keep mock + add API items
-        setItems((prev) => [...prev, ...apiItems]);
+        setItems(apiItems);
         setLoading(false);
       })
-      .catch(() => {
-        // Silently fail - keep showing mock data
+      .catch((err) => {
+        console.error("Failed to fetch assignments:", err);
+        setItems([]);
         setLoading(false);
       });
     return () => {

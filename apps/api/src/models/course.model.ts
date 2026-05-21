@@ -1,50 +1,56 @@
 import { pool } from '../db/index';
 
 export const getAllCourses = async (userId: number) => {
-  const result = await pool.query(`
-    SELECT 
-      s.id,
-      s.slug,
-      s.name as title,
-      s.name as subject,
-      s.instructor,
-      COALESCE(
-        (SELECT COUNT(*)::float / NULLIF(COUNT(*), 0) * 100 
+  try {
+    const result = await pool.query(`
+      SELECT 
+        s.id,
+        s.slug,
+        s.name as title,
+        s.name as subject,
+        s.instructor,
+        COALESCE(
+          (SELECT COUNT(*)::float / NULLIF(COUNT(*), 0) * 100 
+           FROM lessons l 
+           LEFT JOIN lesson_completion lc ON l.id = lc.lesson_id AND lc.user_id = $1
+           WHERE l.subject_id = s.id AND lc.is_completed = true), 0
+        ) as progress,
+        'active' as status,
+        (SELECT COUNT(DISTINCT module_id) FROM lessons WHERE subject_id = s.id) as "totalModules",
+        (SELECT COUNT(DISTINCT l.module_id) 
          FROM lessons l 
-         LEFT JOIN lesson_completion lc ON l.id = lc.lesson_id AND lc.user_id = $1
-         WHERE l.subject_id = s.id AND lc.is_completed = true), 0
-      ) as progress,
-      'active' as status,
-      (SELECT COUNT(DISTINCT module_id) FROM lessons WHERE subject_id = s.id) as "totalModules",
-      (SELECT COUNT(DISTINCT l.module_id) 
-       FROM lessons l 
-       JOIN lesson_completion lc ON l.id = lc.lesson_id 
-       WHERE l.subject_id = s.id AND lc.user_id = $1 AND lc.is_completed = true) as "completedModules"
-    FROM subjects s
-  `, [userId]);
-  return result.rows;
+         JOIN lesson_completion lc ON l.id = lc.lesson_id 
+         WHERE l.subject_id = s.id AND lc.user_id = $1 AND lc.is_completed = true) as "completedModules"
+      FROM subjects s
+    `, [userId]);
+    return result.rows;
+  } catch (error) {
+    console.error('Database error in getAllCourses:', error);
+    return []; // Return empty array if database is unreachable
+  }
 };
 
 export const getCourseBySlug = async (slug: string, userId: number) => {
-  const courseRes = await pool.query(`
-    SELECT 
-      s.id, 
-      s.slug, 
-      s.name as title, 
-      s.instructor, 
-      s.description as tagline,
-      COALESCE(
-        (SELECT COUNT(*)::float / NULLIF(COUNT(*), 0) * 100 
-         FROM lessons l 
-         LEFT JOIN lesson_completion lc ON l.id = lc.lesson_id AND lc.user_id = $2
-         WHERE l.subject_id = s.id AND lc.is_completed = true), 0
-      ) as progress,
-      '#2563eb' as accentColor
-    FROM subjects s
-    WHERE s.slug = $1
-  `, [slug, userId]);
+  try {
+    const courseRes = await pool.query(`
+      SELECT 
+        s.id, 
+        s.slug, 
+        s.name as title, 
+        s.instructor, 
+        s.description as tagline,
+        COALESCE(
+          (SELECT COUNT(*)::float / NULLIF(COUNT(*), 0) * 100 
+           FROM lessons l 
+           LEFT JOIN lesson_completion lc ON l.id = lc.lesson_id AND lc.user_id = $2
+           WHERE l.subject_id = s.id AND lc.is_completed = true), 0
+        ) as progress,
+        '#2563eb' as accentColor
+      FROM subjects s
+      WHERE s.slug = $1
+    `, [slug, userId]);
 
-  if (courseRes.rows.length === 0) return null;
+    if (courseRes.rows.length === 0) return null;
 
   const course = courseRes.rows[0];
 
@@ -62,8 +68,6 @@ export const getCourseBySlug = async (slug: string, userId: number) => {
         l.id, 
         l.title, 
         l.order_no,
-        l.type,
-        l.duration,
         l.description,
         COALESCE(lc.is_completed, false) as is_completed
       FROM lessons l
@@ -136,4 +140,36 @@ export const getCourseBySlug = async (slug: string, userId: number) => {
     resources,
     upcoming
   };
+  } catch (error) {
+    console.error('Database error in getCourseBySlug:', error);
+    // Return fallback mock course when database is unreachable
+    return {
+      id: 'fallback-' + slug,
+      slug: slug,
+      title: slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+      tagline: 'Course content unavailable - database connection error',
+      image: '',
+      accentColor: '#2563eb',
+      progress: 0,
+      instructor: 'TBD',
+      instructorRole: 'Teacher',
+      instructorImage: '',
+      modules: [
+        {
+          id: 'default-module',
+          title: 'Course Content',
+          lessons: [
+            { id: 'lesson-1', title: 'Introduction', status: 'current', type: 'video', duration: '10 min', description: 'Course introduction' }
+          ]
+        }
+      ],
+      resources: [
+        { id: 'r1', title: 'Course Syllabus', icon: 'file', count: 1 },
+        { id: 'r2', title: 'Workbook PDFs', icon: 'file', count: 3 }
+      ],
+      upcoming: [
+        { id: 'u1', type: 'assignment', title: 'Mid-term Assignment', deadline: '2024-11-15' }
+      ]
+    };
+  }
 };

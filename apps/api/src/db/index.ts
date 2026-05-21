@@ -285,6 +285,25 @@ export const initDb = async () => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
+      -- Grades table for student grade records
+      CREATE TABLE IF NOT EXISTS grades (
+        id BIGSERIAL PRIMARY KEY,
+        user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+        subject_id BIGINT REFERENCES subjects(id) ON DELETE CASCADE,
+        assignment_id BIGINT REFERENCES assignments(id) ON DELETE SET NULL,
+        quiz_id BIGINT REFERENCES quizzes(id) ON DELETE SET NULL,
+        score INTEGER NOT NULL,
+        max_score INTEGER NOT NULL,
+        grade VARCHAR(2), -- A, B, C, D, F
+        type VARCHAR(50) NOT NULL, -- 'assignment', 'quiz', 'exam', 'project'
+        title VARCHAR(255) NOT NULL,
+        graded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        graded_by BIGINT REFERENCES users(id) ON DELETE SET NULL,
+        comments TEXT,
+        UNIQUE(user_id, assignment_id),
+        UNIQUE(user_id, quiz_id)
+      );
+
       -- Migrations for existing tables
       DO $$
       BEGIN

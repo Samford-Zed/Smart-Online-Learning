@@ -261,7 +261,7 @@ export default function MyClassesPage() {
             <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
               {visible.map((c, i) => (
                 <div
-                  key={c.period}
+                  key={`${c.period}-${i}`}
                   style={{ animationDelay: `${i * 70}ms` }}
                   className="animate-fade-in-up"
                 >
