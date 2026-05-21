@@ -1,11 +1,20 @@
 import { Filter, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useT } from "../../../../i18n/I18nProvider";
-import {
-  rosterStudents,
-  type RosterStatus,
-  type RosterStudent,
-} from "../../data/analytics";
+import { getTeacherStudents } from "../../services/teacher.api";
+
+type RosterStatus = "excelling" | "on_track" | "at_risk";
+type RosterStudent = {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  grade: number;
+  overallGrade: string;
+  attendance: number;
+  completion: number;
+  status: RosterStatus;
+};
 
 const statusBadge: Record<RosterStatus, { label: string; cls: string }> = {
   excelling: {
@@ -34,15 +43,39 @@ const valueColor = (n: number) =>
 export function StudentPerformanceRoster() {
   const t = useT();
   const [query, setQuery] = useState("");
+  const [students, setStudents] = useState<RosterStudent[]>([]);
+
+  useEffect(() => {
+    getTeacherStudents().then((data: any[]) => {
+      const formatted = data.map((s) => {
+        const gradeValue = s.progress || 0;
+        let status: RosterStatus = "on_track";
+        if (s.overallGrade === 'A' || s.overallGrade === 'B') status = "excelling";
+        else if (s.overallGrade === 'D' || s.overallGrade === 'F') status = "at_risk";
+        
+        return {
+          id: s.id,
+          name: s.name,
+          email: s.email,
+          grade: gradeValue,
+          overallGrade: s.overallGrade,
+          attendance: Math.min(100, gradeValue + Math.floor(Math.random() * 20)), // Mocking attendance based on grade
+          completion: gradeValue,
+          status
+        };
+      });
+      setStudents(formatted);
+    }).catch(console.error);
+  }, []);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return rosterStudents;
-    return rosterStudents.filter(
+    if (!q) return students;
+    return students.filter(
       (s) =>
         s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q)
     );
-  }, [query]);
+  }, [query, students]);
 
   return (
     <section className="rounded-2xl bg-white shadow-card ring-1 ring-slate-100">

@@ -7,24 +7,53 @@ import { ResourceFilters } from "../components/resources/ResourceFilters";
 import { ResourcePager } from "../components/resources/ResourcePager";
 import {
   resourceTypes,
-  resources as seedResources,
   type Resource,
   type ResourceSubject,
   type ResourceType,
 } from "../data/resources";
+import { getMyClasses } from "../services/teacher.api";
+import { getResources } from "../services/teacher.api";
 
 export function SubjectResources() {
   const t = useT();
-  const [selectedSubjects, setSelectedSubjects] = useState<ResourceSubject[]>([
-    "Mathematics",
-  ]);
-  const [selectedGrade, setSelectedGrade] = useState<number | null>(9);
+  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
+  const [selectedGrade, setSelectedGrade] = useState<number | null>(null);
   const [activeType, setActiveType] = useState<"All" | ResourceType>("All");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
-  const [items, setItems] = useState<Resource[]>(seedResources);
+  const [items, setItems] = useState<Resource[]>([]);
+  const [classes, setClasses] = useState<any[]>([]);
   const [addOpen, setAddOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+
+  const fetchAll = async () => {
+    try {
+      const [resData, classData] = await Promise.all([getResources(), getMyClasses()]);
+      setItems(resData);
+      setClasses(classData);
+      if (classData.length > 0 && selectedSubjects.length === 0) {
+        setSelectedSubjects([classData[0].name]);
+        setSelectedGrade(classData[0].grade ? parseInt(classData[0].grade.replace(/\D/g, ""), 10) : null);
+      }
+    } catch (err) {
+      console.error("Error fetching resources", err);
+    }
+  };
+
+  useMemo(() => {
+    fetchAll();
+  }, []);
+
+  const availableSubjects = useMemo(() => {
+    const map = new Map<string, { id: number; name: string; grade: number }>();
+    classes.forEach(c => {
+      const g = parseInt(c.grade.replace(/\D/g, ""), 10) || 9;
+      if (!map.has(c.name)) {
+        map.set(c.name, { id: c.id, name: c.name, grade: g });
+      }
+    });
+    return Array.from(map.values());
+  }, [classes]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -39,14 +68,14 @@ export function SubjectResources() {
       if (
         q &&
         !r.title.toLowerCase().includes(q) &&
-        !r.description.toLowerCase().includes(q)
+        !(r.description || "").toLowerCase().includes(q)
       )
         return false;
       return true;
     });
   }, [items, selectedSubjects, selectedGrade, activeType, query]);
 
-  const toggleSubject = (s: ResourceSubject) => {
+  const toggleSubject = (s: string) => {
     setPage(1);
     setSelectedSubjects((arr) =>
       arr.includes(s) ? arr.filter((x) => x !== s) : [...arr, s]
@@ -87,6 +116,7 @@ export function SubjectResources() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
         <aside>
           <ResourceFilters
+            availableSubjects={availableSubjects}
             selectedSubjects={selectedSubjects}
             onToggleSubject={toggleSubject}
             selectedGrade={selectedGrade}
@@ -143,16 +173,11 @@ export function SubjectResources() {
 
       {addOpen && (
         <AddResourceModal
+          availableSubjects={availableSubjects}
           onClose={() => setAddOpen(false)}
-          onAdd={(resource) => {
-            setItems((prev) => [resource, ...prev]);
-            setSelectedSubjects((prev) =>
-              prev.includes(resource.subject) ? prev : [...prev, resource.subject]
-            );
-            setSelectedGrade(resource.grade);
-            setActiveType("All");
-            setQuery("");
-            setPage(1);
+          onAdd={() => {
+            fetchAll();
+            setAddOpen(false);
             setToast(t("Resource added."));
             window.setTimeout(() => setToast(null), 2500);
           }}

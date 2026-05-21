@@ -101,6 +101,41 @@ const seed = async () => {
     );
     const assignmentId = assignmentRes.rows[0].id;
 
+    // Create a pending assignment submission for the Test Student
+    await client.query(`
+      INSERT INTO assignment_submissions (user_id, assignment_id, file_url, status, score, feedback, submitted_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `, [
+      userId,
+      assignmentId,
+      'https://example.com/algebra_essay_submission.pdf',
+      'pending',
+      null,
+      null,
+      new Date(Date.now() - 1.5 * 60 * 60 * 1000) // 1.5 hours ago
+    ]);
+
+    // --- TEACHER SEEDING ---
+    const teacherEmail = 'anderson@school.edu';
+    let teacherRes = await client.query('SELECT id FROM users WHERE email = $1', [teacherEmail]);
+    let teacherId;
+    if (teacherRes.rows.length === 0) {
+      teacherRes = await client.query(
+        'INSERT INTO users (full_name, email, password, role) VALUES ($1, $2, $3, $4) RETURNING id',
+        ['Mr. Anderson', teacherEmail, passwordHash, 'teacher']
+      );
+      teacherId = teacherRes.rows[0].id;
+    } else {
+      teacherId = teacherRes.rows[0].id;
+    }
+
+    // Link teacher to subject
+    await client.query(`
+      INSERT INTO teacher_subjects (teacher_id, subject_id) 
+      VALUES ($1, $2)
+      ON CONFLICT (teacher_id, subject_id) DO NOTHING
+    `, [teacherId, subjectId]);
+
     // 11. Create Assessment
     const assessmentRes = await client.query(
       'INSERT INTO assessments (subject_id, title, duration_minutes, scheduled_for, instructions, status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
@@ -116,14 +151,80 @@ const seed = async () => {
 
     // 13. Create Resource
     await client.query(
-      'INSERT INTO resources (subject_id, title, kind, size, duration, download_url, view_url) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-      [subjectId, 'Calculus Guide', 'pdf', '1.2MB', null, 'https://example.com/calculus.pdf', 'https://example.com/viewer?file=calculus.pdf']
+      'INSERT INTO resources (subject_id, title, description, kind, size, duration, download_url, view_url, cover) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+      [subjectId, 'Calculus Guide', 'A comprehensive printable PDF worksheet covering calculus operations.', 'PDF', '1.2MB', null, 'https://example.com/calculus.pdf', 'https://example.com/viewer?file=calculus.pdf', 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&w=600&q=60']
     );
+
+    await client.query(
+      'INSERT INTO resources (subject_id, title, description, kind, size, duration, download_url, view_url, cover) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+      [subjectId, 'Introduction to Trigonometry', 'A comprehensive video guide explaining sine, cosine, and tangent fundamentals.', 'Video', null, '14:20', null, 'https://example.com/trig-video', 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&w=600&q=60']
+    );
+
 
     // 14. Create Event
     await client.query('INSERT INTO events (user_id, title, start_time, end_time, type, location, description, color_class) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
       [userId, 'Math Study Group', new Date(Date.now() + 1 * 24 * 60 * 60 * 1000), new Date(Date.now() + 1 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000), 'class', 'Library Room 4', 'Group study for algebra', 'bg-green-500']
     );
+
+    // 15. Create Student Feedback
+    const fbRes1 = await client.query(`
+      INSERT INTO student_feedback (student_id, teacher_id, subject_id, title, status, rating, created_at, updated_at) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id
+    `, [
+      userId, teacherId, subjectId, 'Question about the Physics assignment', 'new', null, 
+      new Date(Date.now() - 10 * 60 * 1000), new Date(Date.now() - 10 * 60 * 1000)
+    ]);
+    const fbId1 = fbRes1.rows[0].id;
+
+    await client.query(`
+      INSERT INTO feedback_messages (feedback_id, sender_id, body, created_at)
+      VALUES ($1, $2, $3, $4)
+    `, [
+      fbId1, userId, 'Hi Mr. Anderson,\n\nI was working on the kinematics assignment over the weekend and got stuck on question #4. I was wondering if we need to include the lab safety protocols in the introduction or methodology section of the report?',
+      new Date(Date.now() - 10 * 60 * 1000)
+    ]);
+
+    const fbRes2 = await client.query(`
+      INSERT INTO student_feedback (student_id, teacher_id, subject_id, title, status, rating, created_at, updated_at) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id
+    `, [
+      userId, teacherId, subjectId, 'Feedback on Chapter 4 Quiz', 'in_progress', null, 
+      new Date(Date.now() - 2 * 60 * 60 * 1000), new Date(Date.now() - 2 * 60 * 60 * 1000)
+    ]);
+    const fbId2 = fbRes2.rows[0].id;
+
+    await client.query(`
+      INSERT INTO feedback_messages (feedback_id, sender_id, body, created_at)
+      VALUES ($1, $2, $3, $4)
+    `, [
+      fbId2, userId, 'The last two questions seemed to cover material we haven\'t discussed yet. Could we review those topics in the next session?',
+      new Date(Date.now() - 2 * 60 * 60 * 1000)
+    ]);
+
+    const fbRes3 = await client.query(`
+      INSERT INTO student_feedback (student_id, teacher_id, subject_id, title, status, rating, created_at, updated_at) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id
+    `, [
+      userId, teacherId, subjectId, 'Extension request', 'replied', 5, 
+      new Date(Date.now() - 24 * 60 * 60 * 1000), new Date(Date.now() - 24 * 60 * 60 * 1000)
+    ]);
+    const fbId3 = fbRes3.rows[0].id;
+
+    await client.query(`
+      INSERT INTO feedback_messages (feedback_id, sender_id, body, created_at)
+      VALUES ($1, $2, $3, $4)
+    `, [
+      fbId3, userId, 'I have been out sick for three days, is it possible to get an extension on the history essay?',
+      new Date(Date.now() - 24 * 60 * 60 * 1000)
+    ]);
+
+    await client.query(`
+      INSERT INTO feedback_messages (feedback_id, sender_id, body, created_at)
+      VALUES ($1, $2, $3, $4)
+    `, [
+      fbId3, teacherId, 'Hi, hope you feel better soon. You can submit by Friday — I\'ve extended the deadline.',
+      new Date(Date.now() - 23.5 * 60 * 60 * 1000)
+    ]);
 
     await client.query('COMMIT');
     console.log('Test data seeded successfully.');

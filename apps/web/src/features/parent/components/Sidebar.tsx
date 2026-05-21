@@ -7,6 +7,7 @@ import {
   TrendingUp,
   History,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useT } from "../../../i18n/I18nProvider";
 import type { TranslationKey } from "../../../i18n/translations";
 import type { RouteId } from "../routes";
@@ -32,6 +33,13 @@ type Props = {
 
 export function Sidebar({ active, onNavigate }: Props) {
   const t = useT();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    navigate("/login");
+  };
 
   return (
     <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-slate-200 bg-white">
@@ -79,7 +87,10 @@ export function Sidebar({ active, onNavigate }: Props) {
 
       {/* Footer */}
       <div className="space-y-2 px-3 pb-6">
-        <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">
+        <button 
+          onClick={handleLogout}
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+        >
           <LogOut className="h-[18px] w-[18px]" />
           {t("common.logout")}
         </button>

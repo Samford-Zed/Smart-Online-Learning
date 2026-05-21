@@ -15,3 +15,11 @@ export const getResourceSubjects = async () => {
 export const requestResource = async (userId: string, title: string, subject: string, description: string) => {
   return await ResourceModel.requestResource(userId, title, subject, description);
 };
+
+export const getTeacherResources = async (teacherId: number) => {
+  return await ResourceModel.getTeacherResources(teacherId);
+};
+
+export const createTeacherResource = async (teacherId: number, data: any) => {
+  return await ResourceModel.createTeacherResource(teacherId, data);
+};

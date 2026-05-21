@@ -1,22 +1,29 @@
 import { ClipboardList, MessageSquare, Star } from "lucide-react";
 import { useT } from "../../../../i18n/I18nProvider";
-import { feedbackStats } from "../../data/feedback";
 
-export function FeedbackKpiCards() {
+type FeedbackStats = {
+  totalReceived: number;
+  pending: number;
+  averageRating: number;
+};
+
+export function FeedbackKpiCards({ stats }: { stats?: FeedbackStats }) {
   const t = useT();
+  const safeStats = stats || { totalReceived: 0, pending: 0, averageRating: 0 };
+  
   return (
     <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
       <Card
         icon={MessageSquare}
         iconBg="bg-indigo-500"
         label={t("Total Received")}
-        value={feedbackStats.totalReceived.toString()}
+        value={safeStats.totalReceived.toString()}
       />
       <Card
         icon={ClipboardList}
         iconBg="bg-indigo-500"
         label={t("Pending Responses")}
-        value={feedbackStats.pending.toString()}
+        value={safeStats.pending.toString()}
       />
       <Card
         icon={Star}
@@ -24,7 +31,7 @@ export function FeedbackKpiCards() {
         label={t("Average Rating")}
         value={
           <span>
-            {feedbackStats.averageRating.toFixed(1)}
+            {safeStats.averageRating.toFixed(1)}
             <span className="ml-1 text-base font-semibold text-slate-400">
               / 5.0
             </span>

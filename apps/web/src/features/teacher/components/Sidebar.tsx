@@ -1,4 +1,5 @@
 import { LogOut } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useT } from "../../../i18n/I18nProvider";
 import type { TranslationKey } from "../../../i18n/translations";
 import { TEACHER_ROUTES, type TeacherRouteId } from "../routes";
@@ -8,9 +9,11 @@ type Props = {
   onNavigate: (id: TeacherRouteId) => void;
 };
 
-const NAV_KEYS: Record<TeacherRouteId, TranslationKey> = {
+const NAV_KEYS: Record<TeacherRouteId, string> = {
   dashboard: "nav.dashboard",
   classes: "nav.classManagement",
+  "class-detail": "nav.classDetail",
+  "grade-submissions": "nav.gradeSubmissions",
   authoring: "nav.createContent",
   resources: "nav.subjectResources",
   feedback: "nav.studentFeedback",
@@ -20,6 +23,15 @@ const NAV_KEYS: Record<TeacherRouteId, TranslationKey> = {
 
 export function Sidebar({ active, onNavigate }: Props) {
   const t = useT();
+  const navigate = useNavigate();
+  const visibleRoutes = TEACHER_ROUTES.filter((r) => !r.hidden);
+  
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    navigate("/login");
+  };
+
   return (
     <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-slate-200 bg-white">
       {/* Brand */}
@@ -35,7 +47,7 @@ export function Sidebar({ active, onNavigate }: Props) {
       {/* Nav */}
       <nav className="flex-1 px-3">
         <ul className="space-y-1">
-          {TEACHER_ROUTES.map((item) => {
+          {visibleRoutes.map((item) => {
             const Icon = item.icon;
             const isActive = active === item.id;
             return (
@@ -49,7 +61,7 @@ export function Sidebar({ active, onNavigate }: Props) {
                   }`}
                 >
                   <Icon className="h-[18px] w-[18px]" />
-                  <span>{t(NAV_KEYS[item.id])}</span>
+                  <span>{t(NAV_KEYS[item.id] as TranslationKey) || item.label}</span>
                 </button>
               </li>
             );
@@ -59,7 +71,10 @@ export function Sidebar({ active, onNavigate }: Props) {
 
       {/* Footer */}
       <div className="px-3 pb-6">
-        <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">
+        <button 
+          onClick={handleLogout}
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+        >
           <LogOut className="h-[18px] w-[18px]" />
           {t("common.logout")}
         </button>

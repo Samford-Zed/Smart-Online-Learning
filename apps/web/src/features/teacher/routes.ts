@@ -12,6 +12,8 @@ import {
 export type TeacherRouteId =
   | "dashboard"
   | "classes"
+  | "class-detail"
+  | "grade-submissions"
   | "authoring"
   | "resources"
   | "feedback"
@@ -23,9 +25,12 @@ export const TEACHER_ROUTES: {
   label: string;
   title: string;
   icon: LucideIcon;
+  hidden?: boolean;
 }[] = [
   { id: "dashboard", label: "Dashboard", title: "Teacher Dashboard", icon: LayoutGrid },
   { id: "classes", label: "Class Management", title: "Class Management", icon: BookOpen },
+  { id: "class-detail", label: "Class Detail", title: "Class Details", icon: BookOpen, hidden: true },
+  { id: "grade-submissions", label: "Grade Submissions", title: "Grade Submissions", icon: MessageSquare, hidden: true },
   { id: "authoring", label: "Create Content", title: "Course & Content Authoring", icon: PenSquare },
   { id: "resources", label: "Subject Resources", title: "Subject Resources", icon: GraduationCap },
   { id: "feedback", label: "Student Feedback", title: "Student Feedback", icon: MessageSquare },
