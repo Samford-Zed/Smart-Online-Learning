@@ -79,3 +79,47 @@ export const trackResourceView = async (userId: string, resourceId: string, prog
     DO UPDATE SET progress = $3, viewed_at = CURRENT_TIMESTAMP
   `, [userId, resourceId, progress]);
 };
+
+export const getTeacherResources = async (teacherId: number) => {
+  const result = await pool.query(
+    `SELECT 
+      r.id::text,
+      r.title,
+      r.description,
+      r.kind as type,
+      s.name as subject,
+      s.name as "subjectShort",
+      CAST(NULLIF(REGEXP_REPLACE(s.grade, '[^0-9]', '', 'g'), '') AS INTEGER) as grade,
+      r.cover
+    FROM resources r
+    JOIN subjects s ON r.subject_id = s.id
+    JOIN teacher_subjects ts ON s.id = ts.subject_id
+    WHERE ts.teacher_id = $1
+    ORDER BY r.created_at DESC`,
+    [teacherId]
+  );
+  return result.rows;
+};
+
+export const createTeacherResource = async (teacherId: number, data: any) => {
+  const subjectCheck = await pool.query(
+    `SELECT s.id FROM subjects s
+     JOIN teacher_subjects ts ON s.id = ts.subject_id
+     WHERE ts.teacher_id = $1 AND s.name = $2`,
+    [teacherId, data.subject]
+  );
+
+  if (subjectCheck.rows.length === 0) {
+    throw new Error("Teacher does not teach this subject or subject not found");
+  }
+
+  const subjectId = subjectCheck.rows[0].id;
+
+  const result = await pool.query(
+    `INSERT INTO resources (subject_id, title, description, kind, cover)
+     VALUES ($1, $2, $3, $4, $5) RETURNING id::text`,
+    [subjectId, data.title, data.description, data.type, data.cover]
+  );
+  
+  return result.rows[0];
+};

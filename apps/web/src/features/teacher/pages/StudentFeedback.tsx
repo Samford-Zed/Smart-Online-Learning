@@ -1,14 +1,11 @@
 import { Download } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useT } from "../../../i18n/I18nProvider";
 import { FeedbackKpiCards } from "../components/feedback/FeedbackKpiCards";
 import { FeedbackList } from "../components/feedback/FeedbackList";
 import { FeedbackThread } from "../components/feedback/FeedbackThread";
-import {
-  feedbackList,
-  feedbackStats,
-  type FeedbackItem,
-} from "../data/feedback";
+import type { FeedbackItem } from "../data/feedback";
+import { getFeedback, getFeedbackStats, replyFeedback, resolveFeedback } from "../services/teacher.api";
 
 const statusLabel: Record<FeedbackItem["status"], string> = {
   new: "New",
@@ -21,9 +18,27 @@ const csvCell = (value: string) =>
 
 export function StudentFeedback() {
   const t = useT();
-  const [items, setItems] = useState<FeedbackItem[]>(feedbackList);
-  const [selectedId, setSelectedId] = useState<string>(feedbackList[0].id);
+  const [items, setItems] = useState<FeedbackItem[]>([]);
+  const [stats, setStats] = useState<any>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+
+  const fetchData = async () => {
+    try {
+      const [threads, statistics] = await Promise.all([getFeedback(), getFeedbackStats()]);
+      setItems(threads);
+      setStats(statistics);
+      if (threads.length > 0 && !selectedId) {
+        setSelectedId(threads[0].id);
+      }
+    } catch (error) {
+      console.error("Failed to load feedback", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const handleExport = () => {
     const counts = items.reduce(
@@ -44,9 +59,9 @@ export function StudentFeedback() {
       ["New", String(counts.new)],
       ["In Progress", String(counts.in_progress)],
       ["Replied", String(counts.replied)],
-      ["Lifetime received", String(feedbackStats.totalReceived)],
-      ["Pending (overall)", String(feedbackStats.pending)],
-      ["Average rating", String(feedbackStats.averageRating)],
+      ["Lifetime received", String(stats?.totalReceived ?? 0)],
+      ["Pending (overall)", String(stats?.pending ?? 0)],
+      ["Average rating", String(stats?.averageRating ?? 0)],
       [],
     ];
 
@@ -98,37 +113,28 @@ export function StudentFeedback() {
     window.setTimeout(() => setToast(null), 2500);
   };
 
-  const selected = items.find((i) => i.id === selectedId) ?? items[0];
+  const selected = items.find((i) => i.id === selectedId) || items[0] || null;
 
-  const sendReply = (id: string, body: string) => {
-    setItems((arr) =>
-      arr.map((it) =>
-        it.id === id
-          ? {
-              ...it,
-              status: "replied",
-              thread: [
-                ...it.thread,
-                {
-                  authorName: "Ms. Sarah",
-                  authorAvatar: "https://i.pravatar.cc/64?img=47",
-                  timestamp: `Today, ${new Date().toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}`,
-                  body,
-                },
-              ],
-            }
-          : it
-      )
-    );
+  const sendReply = async (id: string, body: string) => {
+    try {
+      await replyFeedback(id, body);
+      await fetchData();
+      setToast(t("Reply sent successfully."));
+      setTimeout(() => setToast(null), 2500);
+    } catch (err) {
+      console.error("Failed to reply", err);
+    }
   };
 
-  const markResolved = (id: string) => {
-    setItems((arr) =>
-      arr.map((it) => (it.id === id ? { ...it, status: "replied" } : it))
-    );
+  const markResolved = async (id: string) => {
+    try {
+      await resolveFeedback(id);
+      await fetchData();
+      setToast(t("Thread marked as resolved."));
+      setTimeout(() => setToast(null), 2500);
+    } catch (err) {
+      console.error("Failed to resolve", err);
+    }
   };
 
   return (
@@ -152,7 +158,7 @@ export function StudentFeedback() {
         </button>
       </header>
 
-      <FeedbackKpiCards />
+      <FeedbackKpiCards stats={stats} />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
         <div className="min-h-[560px]">

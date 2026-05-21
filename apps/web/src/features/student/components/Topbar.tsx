@@ -195,7 +195,10 @@ export function Topbar() {
                 </Link>
               </div>
               <div className="border-t border-ink-100 py-1.5">
-                <Link to="/login" className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50">
+                <Link to="/login" onClick={() => {
+                  localStorage.removeItem("token");
+                  localStorage.removeItem("user");
+                }} className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50">
                   <LogOut className="size-4" /> Logout
                 </Link>
               </div>

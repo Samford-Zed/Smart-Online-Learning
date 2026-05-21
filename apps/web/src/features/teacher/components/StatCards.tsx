@@ -1,6 +1,5 @@
 import { BookOpen, MessageSquare, TrendingUp, Users } from "lucide-react";
 import { useT } from "../../../i18n/I18nProvider";
-import { teacherStats } from "../data/dashboard";
 
 const iconMap = {
   students: Users,
@@ -8,13 +7,20 @@ const iconMap = {
   feedback: MessageSquare,
 } as const;
 
-export function StatCards() {
+type StatItem = {
+  id: string;
+  value: string | number;
+  label: any;
+  badge?: { label: any; tone: "success" | "neutral" };
+};
+
+export function StatCards({ stats }: { stats: StatItem[] }) {
   const t = useT();
   return (
     <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-      {teacherStats.map((s, i) => {
+      {stats.map((s, i) => {
         const Icon = iconMap[s.id as keyof typeof iconMap] ?? Users;
-        const highlighted = i === teacherStats.length - 1;
+        const highlighted = i === stats.length - 1;
         return (
           <article
             key={s.id}

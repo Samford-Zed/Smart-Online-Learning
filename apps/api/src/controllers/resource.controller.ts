@@ -45,3 +45,25 @@ export const requestResource = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Error requesting resource', error: (error as any).message });
   }
 };
+
+export const getTeacherResources = async (req: Request, res: Response) => {
+  try {
+    const teacherId = (req as any).auth.userId;
+    const resources = await ResourceService.getTeacherResources(teacherId);
+    res.json(resources);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching teacher resources', error: (error as any).message });
+  }
+};
+
+export const createTeacherResource = async (req: Request, res: Response) => {
+  try {
+    const teacherId = (req as any).auth.userId;
+    const data = req.body;
+    const resource = await ResourceService.createTeacherResource(teacherId, data);
+    res.status(201).json(resource);
+  } catch (error) {
+    console.error("CREATE RESOURCE ERROR:", error);
+    res.status(500).json({ message: 'Error creating resource', error: (error as any).message });
+  }
+};

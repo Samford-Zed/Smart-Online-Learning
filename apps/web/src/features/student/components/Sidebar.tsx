@@ -80,6 +80,10 @@ export function Sidebar() {
         </Link>
         <Link
           to="/login"
+          onClick={() => {
+            localStorage.removeItem("token");
+            localStorage.removeItem("user");
+          }}
           className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50"
         >
           <LogOut className="size-[18px]" aria-hidden />

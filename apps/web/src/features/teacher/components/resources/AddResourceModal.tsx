@@ -2,13 +2,11 @@ import { X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useT } from "../../../../i18n/I18nProvider";
 import {
-  gradeLevels,
   resourceTypes,
-  subjectFilters,
   type Resource,
-  type ResourceSubject,
   type ResourceType,
 } from "../../data/resources";
+import { addResource } from "../../services/teacher.api";
 
 const SHORT: Record<ResourceSubject, string> = {
   Mathematics: "Math",
@@ -27,17 +25,17 @@ const DEFAULT_COVERS: Record<ResourceType, string> = {
 };
 
 type Props = {
+  availableSubjects: { id: number; name: string; grade: number }[];
   onClose: () => void;
   onAdd: (resource: Resource) => void;
 };
 
-export function AddResourceModal({ onClose, onAdd }: Props) {
+export function AddResourceModal({ availableSubjects, onClose, onAdd }: Props) {
   const t = useT();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [type, setType] = useState<ResourceType>("Video");
-  const [subject, setSubject] = useState<ResourceSubject>("Mathematics");
-  const [grade, setGrade] = useState<number>(9);
+  const [subject, setSubject] = useState<string>(availableSubjects[0]?.name || "");
   const [cover, setCover] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -49,23 +47,25 @@ export function AddResourceModal({ onClose, onAdd }: Props) {
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !description.trim()) {
       setError(t("Title and description are required."));
       return;
     }
-    onAdd({
-      id: `r-${Date.now()}`,
-      title: title.trim(),
-      description: description.trim(),
-      type,
-      subject,
-      subjectShort: SHORT[subject],
-      grade,
-      cover: cover.trim() || DEFAULT_COVERS[type],
-    });
-    onClose();
+    try {
+      const saved = await addResource({
+        title: title.trim(),
+        description: description.trim(),
+        type,
+        subject,
+        cover: cover.trim() || DEFAULT_COVERS[type],
+      });
+      onAdd(saved);
+      onClose();
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || t("Failed to add resource"));
+    }
   };
 
   const typeOptions = resourceTypes.filter(
@@ -139,32 +139,19 @@ export function AddResourceModal({ onClose, onAdd }: Props) {
             <Field label={t("Subject")}>
               <select
                 value={subject}
-                onChange={(e) => setSubject(e.target.value as ResourceSubject)}
+                onChange={(e) => setSubject(e.target.value)}
                 className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
               >
-                {subjectFilters.map((s) => (
-                  <option key={s.name} value={s.name}>
-                    {s.name}
+                {availableSubjects.map((s) => (
+                  <option key={s.id} value={s.name}>
+                    {s.name} - Grade {s.grade}
                   </option>
                 ))}
               </select>
             </Field>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Field label={t("Grade Level")}>
-              <select
-                value={grade}
-                onChange={(e) => setGrade(Number(e.target.value))}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-              >
-                {gradeLevels.map((g) => (
-                  <option key={g} value={g}>
-                    {t("Grade")} {g}
-                  </option>
-                ))}
-              </select>
-            </Field>
+          <div className="grid grid-cols-1 gap-3">
             <Field label={t("Cover image URL (optional)")}>
               <input
                 value={cover}

@@ -1,17 +1,35 @@
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { useT } from "../../../i18n/I18nProvider";
-import { subjectAverages } from "../data/dashboard";
 
 const filterOptions = ["Subject Averages", "Top Quartile", "Bottom Quartile"];
 
-export function ClassPerformanceChart() {
+type ClassData = {
+  short: string;
+  name: string;
+  value: number; // 0-100
+};
+
+export function ClassPerformanceChart({ data = [] }: { data?: ClassData[] }) {
   const t = useT();
   const [filter, setFilter] = useState(filterOptions[0]);
   const [hover, setHover] = useState<number | null>(null);
-  const [active, setActive] = useState<number>(subjectAverages.length - 1);
+  const [active, setActive] = useState<number>(Math.max(0, data.length - 1));
 
-  const data = subjectAverages;
+  if (!data || data.length === 0) {
+    return (
+      <section className="rounded-2xl bg-white p-6 shadow-card ring-1 ring-slate-100">
+        <header className="flex items-center justify-between">
+          <h3 className="text-base font-semibold text-slate-900">
+            {t("Class Performance by Subject")}
+          </h3>
+        </header>
+        <div className="flex h-56 items-center justify-center text-sm text-slate-400">
+          {t("No class performance data available.")}
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="rounded-2xl bg-white p-6 shadow-card ring-1 ring-slate-100">

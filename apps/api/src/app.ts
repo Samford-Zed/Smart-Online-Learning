@@ -5,6 +5,7 @@ import { authenticateJWT } from './middlewares/authenticateJWT';
 import authRoutes from './routes/auth.routes';
 import studentRoutes from './routes/student.routes';
 import parentRoutes from './routes/parent.routes';
+import teacherRoutes from './routes/teacher.routes';
 import { createServer } from 'http';
 import { initSocket } from './lib/socket';
 import { initDb } from './db/index';
@@ -30,6 +31,8 @@ app.use(express.json());
 app.use('/auth', authRoutes);
 app.use('/api', authRoutes);
 app.use('/api/student', studentRoutes);
+app.use('/api/parent', parentRoutes);
+app.use('/api/teacher', teacherRoutes);
 app.use('/student', studentRoutes);
 app.use('/api/parent', parentRoutes);
 

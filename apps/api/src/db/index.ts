@@ -199,11 +199,13 @@ export const initDb = async () => {
         id BIGSERIAL PRIMARY KEY,
         subject_id BIGINT REFERENCES subjects(id) ON DELETE CASCADE,
         title VARCHAR(255) NOT NULL,
+        description TEXT,
         kind VARCHAR(50) NOT NULL,
         size VARCHAR(50),
         duration VARCHAR(50),
         download_url TEXT,
         view_url TEXT,
+        cover TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
@@ -280,6 +282,14 @@ export const initDb = async () => {
         user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
         message TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS teacher_subjects (
+        id BIGSERIAL PRIMARY KEY,
+        teacher_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+        subject_id BIGINT REFERENCES subjects(id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(teacher_id, subject_id)
       );
 
       -- Migrations for existing tables
@@ -421,9 +431,50 @@ export const initDb = async () => {
         EXCEPTION
           WHEN others THEN null;
         END;
+
+        BEGIN
+          CREATE TABLE IF NOT EXISTS student_feedback (
+            id BIGSERIAL PRIMARY KEY,
+            student_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+            teacher_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+            subject_id BIGINT REFERENCES subjects(id) ON DELETE SET NULL,
+            title VARCHAR(255) NOT NULL,
+            status VARCHAR(50) DEFAULT 'new',
+            rating INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+        EXCEPTION
+          WHEN others THEN null;
+        END;
+
+        BEGIN
+          CREATE TABLE IF NOT EXISTS feedback_messages (
+            id BIGSERIAL PRIMARY KEY,
+            feedback_id BIGINT REFERENCES student_feedback(id) ON DELETE CASCADE,
+            sender_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+            body TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+        EXCEPTION
+          WHEN others THEN null;
+        END;
       END $$;
     `);
-    console.log("Database initialized successfully!");
+
+    // Alter table to add description and cover columns if they don't exist yet
+    try {
+      await pool.query(`
+        ALTER TABLE resources
+        ADD COLUMN IF NOT EXISTS description TEXT,
+        ADD COLUMN IF NOT EXISTS cover TEXT;
+      `);
+    } catch (err) {
+      console.warn('Could not alter resources table', err);
+    }
+
+    await pool.query('COMMIT');
+    console.log('Database initialized successfully!');
   } catch (error) {
     console.error("Failed to initialize database:", error);
   }
