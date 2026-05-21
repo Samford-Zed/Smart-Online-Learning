@@ -17,6 +17,11 @@ import { ProgressOverTimeChart } from "../components/ProgressOverTimeChart";
 import { SkillsRadarChartCard } from "../components/SkillsRadarChart";
 import { SubjectBreakdownCard } from "../components/SubjectBreakdownCard";
 import { api } from "../../../services/api";
+import {
+  progressOverTime as MOCK_PROGRESS,
+  skillsRadar as MOCK_SKILLS,
+  subjectBreakdown as MOCK_SUBJECTS,
+} from "../data/gradesData";
 
 const TERMS = ["Fall 2024", "Spring 2024", "Fall 2023", "Spring 2023"];
 
@@ -32,17 +37,38 @@ export default function GradesPage() {
     "idle" | "booking" | "booked"
   >("idle");
   const [grades, setGrades] = useState<any[]>([]);
+  const [progressData, setProgressData] = useState(MOCK_PROGRESS);
+  const [skillsData, setSkillsData] = useState(MOCK_SKILLS);
+  const [subjectData, setSubjectData] = useState(MOCK_SUBJECTS);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Fetch API grades and merge with mock data
     api.getStudentGrades()
       .then((data: any[]) => {
-        setGrades(data);
+        // Transform API grades and append to any existing
+        const apiGrades = data.map((g) => ({
+          id: `api-${g.id}`,
+          subject: g.subject || g.course || "General",
+          score: g.score || g.grade || 0,
+          grade: g.letterGrade || g.grade || "N/A",
+          color: g.color || "bg-brand",
+        }));
+        setGrades((prev) => [...prev, ...apiGrades]);
+
+        // Also fetch progress/skills if available
+        return api.getStudentProgress();
+      })
+      .then((progress: any) => {
+        if (progress) {
+          if (progress.progressOverTime) setProgressData((prev) => [...prev, ...progress.progressOverTime]);
+          if (progress.skills) setSkillsData((prev) => [...prev, ...progress.skills]);
+          if (progress.subjects) setSubjectData((prev) => [...prev, ...progress.subjects]);
+        }
         setLoading(false);
       })
-      .catch((err: { message: string }) => {
-        setError(err.message);
+      .catch(() => {
+        // Silently fail - keep showing mock data
         setLoading(false);
       });
   }, []);
@@ -51,14 +77,6 @@ export default function GradesPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-surface-page">
         <Loader2 className="size-8 animate-spin text-brand" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-surface-page text-red-600">
-        Error loading grades: {error}
       </div>
     );
   }

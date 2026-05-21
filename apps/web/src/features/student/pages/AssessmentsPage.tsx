@@ -8,13 +8,15 @@ import {
   Wifi,
   MonitorOff,
   Timer,
+  Loader2,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Sidebar } from "../components/Sidebar";
 import { Topbar } from "../components/Topbar";
+import { api } from "../../../services/api";
 import {
-  fetchAssessments,
-  fetchGuidelines,
+  assessments as MOCK_ASSESSMENTS,
+  assessmentGuidelines as MOCK_GUIDELINES,
   type Assessment,
   type AssessmentStatus,
 } from "../data/assessmentsData";
@@ -26,22 +28,53 @@ import {
  * Topbar, max-w-1200 content column).
  */
 export default function AssessmentsPage() {
-  const [items, setItems] = useState<Assessment[]>([]);
+  const [items, setItems] = useState<Assessment[]>(MOCK_ASSESSMENTS);
   const [guidelines, setGuidelines] = useState<
     { iconKey: "wifi" | "monitor" | "timer"; text: string }[]
-  >([]);
+  >(MOCK_GUIDELINES);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
-    Promise.all([fetchAssessments(), fetchGuidelines()]).then(([a, g]) => {
-      if (!active) return;
-      setItems(a);
-      setGuidelines(g);
-    });
+
+    // Fetch API assessments and append to mock data
+    api.getStudentAssessments()
+      .then((data: any[]) => {
+        if (!active) return;
+        const apiAssessments: Assessment[] = data.map((a, i) => ({
+          id: `api-${a.id || i}`,
+          subject: a.subject || "GENERAL",
+          title: a.title || a.name || "Untitled Assessment",
+          scheduledFor: a.scheduledFor || a.scheduled_for || a.dueDate || "TBD",
+          duration: a.duration || "45 mins",
+          durationMinutes: a.durationMinutes || a.duration_minutes || 45,
+          status: (a.status || "upcoming") as AssessmentStatus,
+          iconClass: a.iconClass || "bg-brand/10 text-brand",
+          iconKey: (a.iconKey || "flask") as Assessment["iconKey"],
+          instructions: a.instructions || a.description || "",
+          questions: a.questions || [],
+          resultPercent: a.resultPercent || a.score,
+        }));
+        setItems((prev) => [...prev, ...apiAssessments]);
+        setLoading(false);
+      })
+      .catch(() => {
+        // Silently fail - keep showing mock data
+        setLoading(false);
+      });
+
     return () => {
       active = false;
     };
   }, []);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-surface-page">
+        <Loader2 className="size-8 animate-spin text-brand" />
+      </div>
+    );
+  }
 
   const ongoing = items.filter((i) => i.status === "ongoing");
   const upcoming = items.filter((i) => i.status === "upcoming");

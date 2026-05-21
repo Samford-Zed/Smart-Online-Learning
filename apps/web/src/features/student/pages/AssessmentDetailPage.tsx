@@ -12,8 +12,10 @@ import {
 } from "lucide-react";
 import { Sidebar } from "../components/Sidebar";
 import { Topbar } from "../components/Topbar";
+import { api } from "../../../services/api";
 import {
   fetchAssessmentById,
+  assessments as MOCK_ASSESSMENTS,
   type Assessment,
 } from "../data/assessmentsData";
 
@@ -43,13 +45,52 @@ export default function AssessmentDetailPage() {
   useEffect(() => {
     let active = true;
     setLoading(true);
-    fetchAssessmentById(id ?? "").then((a) => {
+
+    const loadAssessment = async () => {
+      const assessmentId = id ?? "";
+
+      // If it's an API assessment (starts with "api-"), fetch from API
+      if (assessmentId.startsWith("api-")) {
+        const realId = assessmentId.replace("api-", "");
+        try {
+          const a = await api.getStudentAssessment(realId);
+          if (!active) return;
+          if (a) {
+            setAssessment(a as Assessment);
+            if ((a as any)?.status === "completed") setMode("submitted");
+          }
+          setLoading(false);
+          return;
+        } catch {
+          // Fall through to mock lookup
+        }
+      }
+
+      // Otherwise, try mock data first
+      const mock = await fetchAssessmentById(assessmentId);
       if (!active) return;
-      setAssessment(a);
-      // Completed assessments show their result directly.
-      if (a?.status === "completed") setMode("submitted");
+      if (mock) {
+        setAssessment(mock);
+        if (mock.status === "completed") setMode("submitted");
+        setLoading(false);
+        return;
+      }
+
+      // If not in mock, try API as fallback
+      try {
+        const a = await api.getStudentAssessment(assessmentId);
+        if (!active) return;
+        if (a) {
+          setAssessment(a as Assessment);
+          if ((a as any)?.status === "completed") setMode("submitted");
+        }
+      } catch {
+        // Assessment not found - will show empty state
+      }
       setLoading(false);
-    });
+    };
+
+    loadAssessment();
     return () => {
       active = false;
     };

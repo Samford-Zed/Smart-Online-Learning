@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Search, Plus, X, Mail, Phone, ChevronLeft, ChevronRight, MoreHorizontal,
-  Eye, Pencil, Trash2, Users, GraduationCap, Briefcase, Check, AlertTriangle,
+  Eye, Pencil, Trash2, Users, GraduationCap, Briefcase, Check, AlertTriangle, Loader2,
 } from "lucide-react";
 import { AdminSidebar } from "../components/AdminSidebar";
 import { AdminTopbar } from "../components/AdminTopbar";
 import { useT } from "../../../i18n/I18nProvider";
+import { api } from "../../../services/api";
 
 type Parent = {
   id: string; name: string; avatar: string; email: string; phone: string;
@@ -47,7 +48,26 @@ const PAGE_SIZE = 6;
 
 export default function AdminParentsPage() {
   const { t } = useT();
-  const [parents, setParents] = useState<Parent[]>(INITIAL_PARENTS);
+  const [parents, setParents] = useState<Parent[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    loadParents();
+  }, []);
+  
+  async function loadParents() {
+    setLoading(true);
+    try {
+      const response = await api.getAdminParents();
+      if (response.success) {
+        setParents(response.data);
+      }
+    } catch (error) {
+      console.error("Failed to load parents:", error);
+    } finally {
+      setLoading(false);
+    }
+  }
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All" | "Active" | "Inactive">("All");
   const [page, setPage] = useState(1);
@@ -76,23 +96,59 @@ export default function AdminParentsPage() {
     children: parents.reduce((s, p) => s + p.children.length, 0),
   };
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!deleteTarget) return;
-    setParents(ps => ps.filter(p => p.id !== deleteTarget.id));
-    showToast(`${deleteTarget.name} has been removed`);
+    try {
+      await api.deleteAdminParent(parseInt(deleteTarget.id));
+      setParents(ps => ps.filter(p => p.id !== deleteTarget.id));
+      showToast(`${deleteTarget.name} has been removed`);
+    } catch (error) {
+      console.error("Failed to delete parent:", error);
+      showToast("Failed to remove parent");
+    }
     setDeleteTarget(null);
   }
 
-  function handleAdd(p: Parent) {
-    setParents(ps => [...ps, p]);
-    setShowAdd(false);
-    showToast(`${p.name} added successfully`);
+  async function handleAdd(data: any) {
+    try {
+      const response = await api.createAdminParent({
+        full_name: data.name,
+        email: data.email,
+        phone: data.phone,
+        occupation: data.occupation,
+        address: data.address,
+        status: data.status,
+        avatar: data.avatar,
+        studentIds: data.children?.map((c: any) => c.id) || []
+      });
+      if (response.success) {
+        await loadParents(); // Reload to get correct structure
+        showToast(`${data.name} added successfully`);
+        setShowAdd(false);
+      }
+    } catch (error) {
+      console.error("Failed to add parent:", error);
+      showToast("Failed to add parent");
+    }
   }
 
-  function handleEdit(updated: Parent) {
-    setParents(ps => ps.map(p => p.id === updated.id ? updated : p));
-    setEditTarget(null);
-    showToast(`${updated.name} updated successfully`);
+  async function handleEdit(updated: Parent) {
+    try {
+      await api.updateAdminParent(parseInt(updated.id), {
+        full_name: updated.name,
+        email: updated.email,
+        phone: updated.phone,
+        occupation: updated.occupation,
+        address: updated.address,
+        status: updated.status
+      });
+      setParents(ps => ps.map(p => p.id === updated.id ? updated : p));
+      setEditTarget(null);
+      showToast(`${updated.name} updated successfully`);
+    } catch (error) {
+      console.error("Failed to update parent:", error);
+      showToast("Failed to update parent");
+    }
   }
 
   return (
@@ -202,7 +258,8 @@ export default function AdminParentsPage() {
                 </button>
               </div>
             ))}
-            {paged.length === 0 && <p className="col-span-3 py-16 text-center text-sm text-ink-400">No parents found.</p>}
+            {loading && <div className="col-span-3 py-16 text-center"><Loader2 className="mx-auto size-8 animate-spin text-violet-500" /><p className="mt-2 text-sm text-ink-400">Loading parents...</p></div>}
+            {!loading && paged.length === 0 && <p className="col-span-3 py-16 text-center text-sm text-ink-400">No parents found.</p>}
           </div>
 
           {/* Pagination */}
@@ -309,30 +366,59 @@ function ParentProfile({ parent: p, onClose, onEdit }: { parent: Parent; onClose
   );
 }
 
+type StudentResult = { id: number; name: string; email: string; grade_level: string | null };
+
 /* ──────── Add Parent Modal ──────── */
-function AddParentModal({ onClose, onAdd, nextId }: { onClose: () => void; onAdd: (p: Parent) => void; nextId: number }) {
+function AddParentModal({ onClose, onAdd, nextId }: { onClose: () => void; onAdd: (data: any) => void; nextId: number }) {
   const [form, setForm] = useState({ name: "", email: "", phone: "", occupation: "", address: "" });
-  const [selectedStudents, setSelectedStudents] = useState<typeof ALL_STUDENTS[number][]>([]);
+  const [selectedStudents, setSelectedStudents] = useState<StudentResult[]>([]);
   const [studentSearch, setStudentSearch] = useState("");
+  const [studentResults, setStudentResults] = useState<StudentResult[]>([]);
+  const [searching, setSearching] = useState(false);
 
   function set(k: string, v: string) { setForm(f => ({ ...f, [k]: v })); }
 
-  function toggleStudent(s: typeof ALL_STUDENTS[number]) {
-    setSelectedStudents(prev => prev.some(x => x.studentId === s.studentId) ? prev.filter(x => x.studentId !== s.studentId) : [...prev, s]);
+  function toggleStudent(s: StudentResult) {
+    setSelectedStudents(prev => prev.some(x => x.id === s.id) ? prev.filter(x => x.id !== s.id) : [...prev, s]);
   }
 
-  const filteredStudents = ALL_STUDENTS.filter(s =>
-    s.name.toLowerCase().includes(studentSearch.toLowerCase()) || s.studentId.toLowerCase().includes(studentSearch.toLowerCase())
-  );
+  // Search students from API
+  useEffect(() => {
+    if (studentSearch.length < 2) {
+      setStudentResults([]);
+      return;
+    }
+    
+    const timer = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const response = await api.searchAdminStudents(studentSearch, 20);
+        if (response.success) {
+          setStudentResults(response.data);
+        }
+      } catch (error) {
+        console.error("Failed to search students:", error);
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, [studentSearch]);
 
   const valid = form.name.trim() && form.email.trim() && selectedStudents.length > 0;
 
   function submit() {
     if (!valid) return;
     onAdd({
-      id: `p${nextId}`, name: form.name, avatar: `https://i.pravatar.cc/80?img=${30 + nextId}`,
-      email: form.email, phone: form.phone, occupation: form.occupation, address: form.address,
-      children: selectedStudents, status: "Active",
+      name: form.name,
+      email: form.email,
+      phone: form.phone,
+      occupation: form.occupation,
+      address: form.address,
+      status: "Active",
+      avatar: `https://i.pravatar.cc/80?img=${30 + nextId}`,
+      children: selectedStudents.map(s => ({ id: s.id, name: s.name, studentId: String(s.id), grade: s.grade_level || 'N/A' })),
     });
   }
 
@@ -359,27 +445,42 @@ function AddParentModal({ onClose, onAdd, nextId }: { onClose: () => void; onAdd
             {selectedStudents.length > 0 && (
               <div className="mb-2 flex flex-wrap gap-1.5">
                 {selectedStudents.map(s => (
-                  <span key={s.studentId} className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2.5 py-1 text-xs font-medium text-violet-700">
-                    {s.name} ({s.grade})
+                  <span key={s.id} className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2.5 py-1 text-xs font-medium text-violet-700">
+                    {s.name} (Grade {s.grade_level || 'N/A'})
                     <button onClick={() => toggleStudent(s)} className="ml-0.5 rounded-full hover:bg-violet-200"><X className="size-3" /></button>
                   </span>
                 ))}
               </div>
             )}
-            <input type="text" placeholder="Search students..." value={studentSearch} onChange={e => setStudentSearch(e.target.value)}
-              className="mb-2 h-9 w-full rounded-lg border border-ink-200 px-3 text-xs outline-none focus:border-violet-400" />
+            <div className="relative mb-2">
+              <input 
+                type="text" 
+                placeholder="Type at least 2 characters to search..." 
+                value={studentSearch} 
+                onChange={e => setStudentSearch(e.target.value)}
+                className="h-9 w-full rounded-lg border border-ink-200 px-3 text-xs outline-none focus:border-violet-400" />
+              {searching && <Loader2 className="absolute right-3 top-2 size-4 animate-spin text-violet-500" />}
+            </div>
             <div className="max-h-36 overflow-y-auto rounded-xl border border-ink-200 divide-y divide-ink-50">
-              {filteredStudents.map(s => {
-                const checked = selectedStudents.some(x => x.studentId === s.studentId);
+              {studentResults.map(s => {
+                const checked = selectedStudents.some(x => x.id === s.id);
                 return (
-                  <button key={s.studentId} type="button" onClick={() => toggleStudent(s)}
+                  <button key={s.id} type="button" onClick={() => toggleStudent(s)}
                     className={`flex w-full items-center justify-between px-3 py-2 text-left text-xs transition ${checked ? "bg-violet-50" : "hover:bg-ink-50"}`}>
-                    <span><span className="font-semibold text-ink-900">{s.name}</span> <span className="text-ink-400">— {s.grade}</span></span>
+                    <span>
+                      <span className="font-semibold text-ink-900">{s.name}</span>
+                      <span className="text-ink-400">— Grade {s.grade_level || 'N/A'}</span>
+                    </span>
                     {checked && <Check className="size-3.5 text-violet-600" />}
                   </button>
                 );
               })}
-              {filteredStudents.length === 0 && <p className="px-3 py-2 text-xs text-ink-400">No students found</p>}
+              {studentSearch.length >= 2 && !searching && studentResults.length === 0 && (
+                <p className="px-3 py-2 text-xs text-ink-400">No students found</p>
+              )}
+              {studentSearch.length < 2 && (
+                <p className="px-3 py-2 text-xs text-ink-400">Type at least 2 characters to search</p>
+              )}
             </div>
           </div>
         </div>

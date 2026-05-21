@@ -27,10 +27,12 @@ import {
   ChevronUp,
   ChevronDown,
   ExternalLink,
+  Loader2,
 } from "lucide-react";
 import { AdminSidebar } from "../components/AdminSidebar";
 import { AdminTopbar } from "../components/AdminTopbar";
 import { useT } from "../../../i18n/I18nProvider";
+import { api } from "../../../services/api";
 import {
   fetchStatCards,
   fetchExamResults,
@@ -60,12 +62,71 @@ export default function AdminDashboardPage() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [feedMenu, setFeedMenu] = useState<string | null>(null);
 
+  const [loading, setLoading] = useState(true);
+  const [apiStats, setApiStats] = useState<any>(null);
+
   useEffect(() => {
-    fetchStatCards().then(setStats);
-    fetchExamResults().then(setExamData);
-    fetchGenderSplit().then(setGender);
-    fetchStarStudents().then(setStudents);
-    fetchExamResultFeed().then(setFeed);
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        // Fetch real data from API
+        const dashboardData = await api.getAdminDashboard();
+        if (dashboardData?.success) {
+          setApiStats(dashboardData.data);
+          // Transform API stats to StatCard format
+          const apiStatCards: StatCard[] = [
+            {
+              id: "students",
+              label: "Total Students",
+              value: dashboardData.data.users?.students || 0,
+              change: "+12%",
+              changeType: "up",
+              icon: "students",
+            },
+            {
+              id: "teachers",
+              label: "Teachers",
+              value: dashboardData.data.users?.teachers || 0,
+              change: "+5%",
+              changeType: "up",
+              icon: "teachers",
+            },
+            {
+              id: "parents",
+              label: "Parents",
+              value: dashboardData.data.users?.parents || 0,
+              change: "+8%",
+              changeType: "up",
+              icon: "parents",
+            },
+            {
+              id: "subjects",
+              label: "Subjects",
+              value: dashboardData.data.subjects || 0,
+              change: "+3",
+              changeType: "up",
+              icon: "earnings",
+            },
+          ];
+          setStats(apiStatCards);
+        }
+      } catch (error) {
+        console.error("Failed to load admin dashboard:", error);
+        // Fallback to mock data
+        const mockStats = await fetchStatCards();
+        setStats(mockStats);
+      } finally {
+        setLoading(false);
+      }
+
+      // Load other mock data (to be replaced in later phases)
+      fetchExamResults().then(setExamData);
+      fetchGenderSplit().then(setGender);
+      fetchStarStudents().then(setStudents);
+      fetchExamResultFeed().then(setFeed);
+    };
+
+    loadData();
   }, []);
 
   function toggleRow(id: string) {

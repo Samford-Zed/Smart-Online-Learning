@@ -6,6 +6,7 @@ import authRoutes from './routes/auth.routes';
 import studentRoutes from './routes/student.routes';
 import parentRoutes from './routes/parent.routes';
 import teacherRoutes from './routes/teacher.routes';
+import adminRoutes from './routes/admin.routes';
 import { createServer } from 'http';
 import { initSocket } from './lib/socket';
 import { initDb } from './db/index';
@@ -35,6 +36,7 @@ app.use('/api/parent', parentRoutes);
 app.use('/api/teacher', teacherRoutes);
 app.use('/student', studentRoutes);
 app.use('/api/parent', parentRoutes);
+app.use('/api/admin', adminRoutes);
 
 // A public route (No middleware)
 app.get('/public', (req, res) => {

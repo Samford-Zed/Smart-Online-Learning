@@ -6,6 +6,7 @@ import {
   getPreferences,
   setPreferences,
 } from "../../student/settings/preferencesStore";
+import { api } from "../../../services/api";
 
 const NOTIFICATIONS = [
   { id: "n1", text: "New student registered: Amara Osei",        time: "2 min ago",  unread: true },
@@ -26,6 +27,25 @@ export function AdminTopbar() {
   const profileRef = useRef<HTMLDivElement>(null);
   const langRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
+  // Real user data
+  const [user, setUser] = useState<{ id: number; fullName: string; email: string; role: string } | null>(null);
+
+  // Load current user on mount
+  useEffect(() => {
+    api.getMe().then((u) => setUser(u)).catch(() => {
+      // Fallback: try to get from localStorage
+      const stored = localStorage.getItem("user");
+      if (stored) {
+        try { setUser(JSON.parse(stored)); } catch {}
+      }
+    });
+  }, []);
+
+  const userName = user?.fullName || user?.email?.split('@')[0] || "Admin";
+  const userEmail = user?.email || "admin@school.edu";
+  const userRole = user?.role || "Admin";
+  const userAvatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${userName}`;
 
   const unreadCount = notifs.filter(n => n.unread).length;
 
@@ -172,13 +192,13 @@ export function AdminTopbar() {
             className="flex items-center gap-2.5 rounded-full border border-ink-200 bg-white py-1 pl-1 pr-3 transition hover:bg-ink-50"
           >
             <img
-              src="https://i.pravatar.cc/80?img=47"
+              src={userAvatar}
               alt="Admin avatar"
-              className="size-8 rounded-full object-cover"
+              className="size-8 rounded-full bg-surface-100 object-cover"
             />
             <div className="text-left leading-tight">
-              <p className="text-xs font-semibold text-ink-900">Priscilla Lily</p>
-              <p className="text-[10px] text-ink-500">Admin</p>
+              <p className="text-xs font-semibold text-ink-900">{userName}</p>
+              <p className="text-[10px] text-ink-500 capitalize">{userRole}</p>
             </div>
             <ChevronDown className={`size-4 text-ink-400 transition-transform ${showProfile ? "rotate-180" : ""}`} aria-hidden />
           </button>
@@ -187,12 +207,12 @@ export function AdminTopbar() {
             <div className="absolute right-0 top-12 z-30 w-56 rounded-2xl border border-ink-200 bg-white shadow-xl animate-scale-in">
               {/* Profile header */}
               <div className="flex items-center gap-3 border-b border-ink-100 px-4 py-3.5">
-                <img src="https://i.pravatar.cc/80?img=47" alt="" className="size-10 rounded-full object-cover ring-2 ring-violet-100" />
+                <img src={userAvatar} alt="" className="size-10 rounded-full bg-surface-100 object-cover ring-2 ring-violet-100" />
                 <div>
-                  <p className="text-sm font-bold text-ink-900">Priscilla Lily</p>
-                  <p className="text-xs text-ink-500">priscilla@school.edu</p>
-                  <span className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-700">
-                    <Shield className="size-2.5" /> Admin
+                  <p className="text-sm font-bold text-ink-900">{userName}</p>
+                  <p className="text-xs text-ink-500">{userEmail}</p>
+                  <span className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-700 capitalize">
+                    <Shield className="size-2.5" /> {userRole}
                   </span>
                 </div>
               </div>

@@ -1,12 +1,13 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell } from "recharts";
 import {
   Plus, Search, ClipboardList, FileText, Clock, MapPin, Users as UsersIcon, Award, TrendingUp,
   Check, X, AlertTriangle, Calendar, Edit2, Trash2, Eye, MoreHorizontal, GraduationCap,
-  ChevronLeft, ChevronRight, Filter, CheckCircle2, Download,
+  ChevronLeft, ChevronRight, Filter, CheckCircle2, Download, Loader2,
 } from "lucide-react";
 import { AdminSidebar } from "../components/AdminSidebar";
 import { AdminTopbar } from "../components/AdminTopbar";
+import { api } from "../../../services/api";
 
 type ExamStatus = "Upcoming" | "Ongoing" | "Completed" | "Cancelled";
 type ExamType = "Mid-Term" | "Final" | "Quiz" | "Assignment";
@@ -54,11 +55,11 @@ const TYPE_META: Record<ExamType, string> = {
 const GRADES = ["All","Grade 9","Grade 10","Grade 11","Grade 12"];
 const SUBJECTS = ["Mathematics","Biology","Physics","Chemistry","Literature","History","Computer Science","Geography"];
 const TEACHERS = [
-  { name: "Dr. Alice Monroe",  avatar: "https://i.pravatar.cc/80?img=49" },
-  { name: "Mr. James Okafor",  avatar: "https://i.pravatar.cc/80?img=11" },
-  { name: "Ms. Clara Zhang",   avatar: "https://i.pravatar.cc/80?img=45" },
-  { name: "Mr. David Mensah",  avatar: "https://i.pravatar.cc/80?img=14" },
-  { name: "Ms. Fatima Hassan", avatar: "https://i.pravatar.cc/80?img=41" },
+  { name: "Dr. Alice Monroe",  avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Alice" },
+  { name: "Mr. James Okafor",  avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=James" },
+  { name: "Ms. Clara Zhang",   avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Clara" },
+  { name: "Mr. David Mensah",  avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=David" },
+  { name: "Ms. Fatima Hassan", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Fatima" },
 ];
 
 /* mock results builder */
@@ -108,8 +109,41 @@ export default function AdminExamsPage() {
   const [deleteExam, setDeleteExam] = useState<Exam | null>(null);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [teachers, setTeachers] = useState<any[]>([]);
 
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(null), 2400); }
+
+  // Load teachers from API
+  useEffect(() => {
+    loadTeachers();
+  }, []);
+
+  async function loadTeachers() {
+    try {
+      setLoading(true);
+      const response = await api.getAdminUsers({ role: 'teacher', limit: 100 });
+      if (response.success && response.data.users.length > 0) {
+        // Transform to exam teacher format with generated avatars
+        const realTeachers = response.data.users.map((t: any) => ({
+          name: t.name,
+          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${t.name}`,
+        }));
+        setTeachers(realTeachers);
+      } else {
+        // Fallback to mock teachers
+        setTeachers(TEACHERS);
+      }
+    } catch (error) {
+      console.error("Failed to load teachers:", error);
+      setTeachers(TEACHERS);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Get active teachers (real or mock)
+  const activeTeachers = teachers.length > 0 ? teachers : TEACHERS;
 
   const filtered = useMemo(() => exams.filter(e => {
     const q = search.toLowerCase();

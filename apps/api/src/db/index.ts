@@ -10,6 +10,9 @@ export const pool = new Pool({
   }
 });
 
+// Query helper function
+export const query = (text: string, params?: any[]) => pool.query(text, params);
+
 // Auto-initialize tables
 export const initDb = async () => {
   try {
