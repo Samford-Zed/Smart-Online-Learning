@@ -9,7 +9,7 @@ export function ClassManagementSection() {
   const rows = [
     {
       avatar:
-        "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80",
+        "https://images.unsplash.com/photo-1506277886164-e25aa3f4ef7f?auto=format&fit=crop&w=200&q=80",
       score: "100",
       bar: "bg-brand",
       pill: "bg-amber-400 text-ink-900",
@@ -18,7 +18,7 @@ export function ClassManagementSection() {
     },
     {
       avatar:
-        "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80",
+        "https://images.unsplash.com/photo-1589156280159-27698a70f29e?auto=format&fit=crop&w=200&q=80",
       score: "9",
       bar: "bg-brand",
       pill: "bg-emerald-100 text-emerald-700",
@@ -26,7 +26,7 @@ export function ClassManagementSection() {
     },
     {
       avatar:
-        "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=200&q=80",
+        "https://images.unsplash.com/photo-1573497019418-b400bb3ab074?auto=format&fit=crop&w=200&q=80",
       score: "85",
       bar: "bg-emerald-500",
       pill: "bg-emerald-100 text-emerald-700",
@@ -34,7 +34,7 @@ export function ClassManagementSection() {
     },
     {
       avatar:
-        "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80",
+        "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=200&q=80",
       score: "75",
       bar: "bg-rose-400",
       pill: "bg-rose-100 text-rose-700",

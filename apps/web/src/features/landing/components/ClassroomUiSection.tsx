@@ -10,29 +10,29 @@ import { Phone, LayoutGrid, Square, Users, Hand } from "lucide-react";
 export function ClassroomUiSection() {
   const tiles = [
     {
-      name: "Sarah Marshall",
-      img: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=400&q=80",
+      name: "Selam Tadesse",
+      img: "https://media.gettyimages.com/id/490486272/photo/beautiful-teenage-high-school-student-smiling-before-class.jpg?s=612x612&w=gi&k=20&c=YhXeCmBXBvsc1BpbZ319fofhWJ4zAAVHH981JNxzfPs=",
       tag: "bg-brand",
       large: true,
     },
     {
-      name: "Tariqul Islam",
-      img: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&q=80",
+      name: "Hana Bekele",
+      img: "https://images.unsplash.com/photo-1589156280159-27698a70f29e?auto=format&fit=crop&w=400&q=80",
       tag: "bg-emerald-500",
     },
     {
-      name: "Adam Levin",
-      img: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80",
+      name: "Dawit Girma",
+      img: "https://i.pinimg.com/736x/70/93/1e/70931eeed024cd7e1c21177bff898652.jpg",
       tag: "bg-rose-500",
     },
     {
-      name: "Hubert Hofland",
+      name: "Yonas Haile",
       img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80",
       tag: "bg-amber-500",
     },
     {
-      name: "Patricia Mendoza",
-      img: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=400&q=80",
+      name: "Tigist Alemu",
+      img: "https://images.unsplash.com/photo-1573497019418-b400bb3ab074?auto=format&fit=crop&w=400&q=80",
       tag: "bg-rose-500",
       large: true,
     },

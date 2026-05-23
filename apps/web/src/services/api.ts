@@ -221,4 +221,82 @@ export const api = {
     request<{ success: boolean; data: any }>(`/api/admin/parents/${id}`, { method: "PUT", body: JSON.stringify(data) }),
   deleteAdminParent: (id: number) => 
     request<{ success: boolean; message: string }>(`/api/admin/parents/${id}`, { method: "DELETE" }),
+
+  // Admin - Exams
+  getAdminExams: (filters?: { status?: string; grade?: string; search?: string }) => {
+    const params = new URLSearchParams();
+    if (filters?.status) params.append("status", filters.status);
+    if (filters?.grade) params.append("grade", filters.grade);
+    if (filters?.search) params.append("search", filters.search);
+    return request<{ success: boolean; data: any[] }>(`/api/admin/exams?${params.toString()}`);
+  },
+  createAdminExam: (data: any) =>
+    request<{ success: boolean; data: any }>("/api/admin/exams", { method: "POST", body: JSON.stringify(data) }),
+  updateAdminExam: (id: string, data: any) =>
+    request<{ success: boolean; data: any }>(`/api/admin/exams/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteAdminExam: (id: string) =>
+    request<{ success: boolean; message: string }>(`/api/admin/exams/${id}`, { method: "DELETE" }),
+
+  // Admin - Attendance
+  getAdminAttendance: (filters?: { grade?: string; search?: string }) => {
+    const params = new URLSearchParams();
+    if (filters?.grade) params.append("grade", filters.grade);
+    if (filters?.search) params.append("search", filters.search);
+    return request<{ success: boolean; data: { students: any[]; summary: any } }>(`/api/admin/attendance?${params.toString()}`);
+  },
+  saveAttendance: (data: { student_id: number; date: string; status: string; note?: string }) =>
+    request<{ success: boolean; data: any }>("/api/admin/attendance", { method: "POST", body: JSON.stringify(data) }),
+
+  // Admin - Announcements
+  getAdminAnnouncements: (filters?: { audience?: string; status?: string; search?: string }) => {
+    const params = new URLSearchParams();
+    if (filters?.audience) params.append("audience", filters.audience);
+    if (filters?.status) params.append("status", filters.status);
+    if (filters?.search) params.append("search", filters.search);
+    return request<{ success: boolean; data: any[] }>(`/api/admin/announcements?${params.toString()}`);
+  },
+  createAdminAnnouncement: (data: any) =>
+    request<{ success: boolean; data: any }>("/api/admin/announcements", { method: "POST", body: JSON.stringify(data) }),
+  updateAdminAnnouncement: (id: string, data: any) =>
+    request<{ success: boolean; data: any }>(`/api/admin/announcements/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteAdminAnnouncement: (id: string) =>
+    request<{ success: boolean; message: string }>(`/api/admin/announcements/${id}`, { method: "DELETE" }),
+
+  // Admin - Calendar
+  getAdminCalendar: (filters?: { type?: string; month?: number; year?: number }) => {
+    const params = new URLSearchParams();
+    if (filters?.type) params.append("type", filters.type);
+    if (filters?.month !== undefined) params.append("month", String(filters.month));
+    if (filters?.year !== undefined) params.append("year", String(filters.year));
+    return request<{ success: boolean; data: any[] }>(`/api/admin/calendar?${params.toString()}`);
+  },
+  createAdminCalendarEvent: (data: any) =>
+    request<{ success: boolean; data: any }>("/api/admin/calendar", { method: "POST", body: JSON.stringify(data) }),
+  updateAdminCalendarEvent: (id: string, data: any) =>
+    request<{ success: boolean; data: any }>(`/api/admin/calendar/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteAdminCalendarEvent: (id: string) =>
+    request<{ success: boolean; message: string }>(`/api/admin/calendar/${id}`, { method: "DELETE" }),
+
+  // Admin - Tasks
+  getAdminTasks: (filters?: { status?: string; priority?: string; search?: string }) => {
+    const params = new URLSearchParams();
+    if (filters?.status) params.append("status", filters.status);
+    if (filters?.priority) params.append("priority", filters.priority);
+    if (filters?.search) params.append("search", filters.search);
+    return request<{ success: boolean; data: any[] }>(`/api/admin/tasks?${params.toString()}`);
+  },
+  createAdminTask: (data: any) =>
+    request<{ success: boolean; data: any }>("/api/admin/tasks", { method: "POST", body: JSON.stringify(data) }),
+  updateAdminTask: (id: string, data: any) =>
+    request<{ success: boolean; data: any }>(`/api/admin/tasks/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteAdminTask: (id: string) =>
+    request<{ success: boolean; message: string }>(`/api/admin/tasks/${id}`, { method: "DELETE" }),
+
+  // Admin - Messages
+  getAdminConversations: () =>
+    request<{ success: boolean; data: any[] }>("/api/admin/messages/conversations"),
+  getAdminMessages: (userId: string) =>
+    request<{ success: boolean; data: any[] }>(`/api/admin/messages/${userId}`),
+  sendAdminMessage: (data: { recipient_id: number; recipient_name: string; text: string; sender_name?: string }) =>
+    request<{ success: boolean; data: any }>("/api/admin/messages", { method: "POST", body: JSON.stringify(data) }),
 };

@@ -99,7 +99,7 @@ const INITIAL: Exam[] = [
 ];
 
 export default function AdminExamsPage() {
-  const [exams, setExams] = useState<Exam[]>(INITIAL);
+  const [exams, setExams] = useState<Exam[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All" | ExamStatus>("All");
   const [gradeFilter, setGradeFilter] = useState("All");
@@ -114,35 +114,61 @@ export default function AdminExamsPage() {
 
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(null), 2400); }
 
-  // Load teachers from API
-  useEffect(() => {
-    loadTeachers();
-  }, []);
+  useEffect(() => { loadExams(); loadTeachers(); }, []);
+
+  async function loadExams() {
+    try {
+      setLoading(true);
+      const res = await api.getAdminExams();
+      if (res.success) {
+        const mapped: Exam[] = res.data.map((e: any) => ({
+          id: String(e.id),
+          title: e.title,
+          subject: e.subject,
+          type: e.type as ExamType,
+          grade: e.grade || "All Grades",
+          teacher: e.teacher_name || "TBD",
+          teacherAvatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${e.teacher_name || e.id}`,
+          date: e.date ? String(e.date).slice(0, 10) : "",
+          startTime: e.start_time || "09:00",
+          endTime: e.end_time || "10:00",
+          duration: Number(e.duration) || 60,
+          location: e.location || "TBD",
+          totalMarks: Number(e.total_marks) || 100,
+          passMarks: Number(e.pass_marks) || 40,
+          status: e.status as ExamStatus,
+          enrolled: Number(e.enrolled) || 0,
+          results: [],
+          instructions: e.instructions || "",
+        }));
+        setExams(mapped);
+      } else {
+        setExams(INITIAL);
+      }
+    } catch {
+      setExams(INITIAL);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function loadTeachers() {
     try {
-      setLoading(true);
       const response = await api.getAdminUsers({ role: 'teacher', limit: 100 });
       if (response.success && response.data.users.length > 0) {
-        // Transform to exam teacher format with generated avatars
         const realTeachers = response.data.users.map((t: any) => ({
           name: t.name,
           avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${t.name}`,
         }));
         setTeachers(realTeachers);
       } else {
-        // Fallback to mock teachers
         setTeachers(TEACHERS);
       }
-    } catch (error) {
-      console.error("Failed to load teachers:", error);
+    } catch {
       setTeachers(TEACHERS);
-    } finally {
-      setLoading(false);
     }
   }
 
-  // Get active teachers (real or mock)
   const activeTeachers = teachers.length > 0 ? teachers : TEACHERS;
 
   const filtered = useMemo(() => exams.filter(e => {
@@ -153,17 +179,44 @@ export default function AdminExamsPage() {
     return true;
   }), [exams, search, statusFilter, gradeFilter]);
 
-  function addExam(e: Exam) { setExams(es => [e, ...es]); setShowCreate(false); showToast(`${e.title} created`); }
-  function updateExam(e: Exam) { setExams(es => es.map(x => x.id === e.id ? e : x)); setEditExam(null); setViewExam(e); showToast("Exam updated"); }
-  function changeStatus(id: string, st: ExamStatus) {
-    setExams(es => es.map(e => e.id === id ? { ...e, status: st } : e));
-    showToast(`Exam marked ${st.toLowerCase()}`);
+  async function addExam(e: Exam) {
+    try {
+      const res = await api.createAdminExam({
+        title: e.title, subject: e.subject, type: e.type, grade: e.grade,
+        teacher_name: e.teacher || null,
+        date: e.date, start_time: e.startTime, end_time: e.endTime,
+        duration: e.duration, location: e.location, total_marks: e.totalMarks,
+        pass_marks: e.passMarks, status: e.status, enrolled: e.enrolled, instructions: e.instructions,
+      });
+      const created: Exam = { ...e, id: String(res.data?.id || Date.now()) };
+      setExams(es => [created, ...es]); setShowCreate(false); showToast(`${e.title} created`);
+    } catch (err: any) { showToast(err.message || "Failed to create exam"); }
   }
-  function removeExam() {
+  async function updateExam(e: Exam) {
+    try {
+      await api.updateAdminExam(e.id, {
+        title: e.title, subject: e.subject, type: e.type, grade: e.grade,
+        date: e.date, start_time: e.startTime, end_time: e.endTime,
+        duration: e.duration, location: e.location, total_marks: e.totalMarks,
+        pass_marks: e.passMarks, status: e.status, enrolled: e.enrolled, instructions: e.instructions,
+      });
+      setExams(es => es.map(x => x.id === e.id ? e : x)); setEditExam(null); setViewExam(e); showToast("Exam updated");
+    } catch (err: any) { showToast(err.message || "Failed to update exam"); }
+  }
+  async function changeStatus(id: string, st: ExamStatus) {
+    try {
+      await api.updateAdminExam(id, { status: st });
+      setExams(es => es.map(e => e.id === id ? { ...e, status: st } : e));
+      showToast(`Exam marked ${st.toLowerCase()}`);
+    } catch (err: any) { showToast(err.message || "Failed to update status"); }
+  }
+  async function removeExam() {
     if (!deleteExam) return;
-    setExams(es => es.filter(e => e.id !== deleteExam.id));
-    showToast("Exam deleted");
-    setDeleteExam(null); setViewExam(null);
+    try {
+      await api.deleteAdminExam(deleteExam.id);
+      setExams(es => es.filter(e => e.id !== deleteExam.id));
+      showToast("Exam deleted"); setDeleteExam(null); setViewExam(null);
+    } catch (err: any) { showToast(err.message || "Failed to delete exam"); }
   }
 
   const stats = {

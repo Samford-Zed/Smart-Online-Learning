@@ -1,10 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Plus, X, Circle, CheckCircle2, Clock, MoreHorizontal, Search, Calendar, Flag, User,
   Edit2, Trash2, Eye, AlertTriangle, Check, ListTodo, TrendingUp, Flame, ClipboardList,
 } from "lucide-react";
 import { AdminSidebar } from "../components/AdminSidebar";
 import { AdminTopbar } from "../components/AdminTopbar";
+import { api } from "../../../services/api";
 
 type Priority = "High" | "Medium" | "Low";
 type TaskStatus = "To Do" | "In Progress" | "Done";
@@ -76,7 +77,8 @@ const INITIAL: Task[] = [
 type PriorityFilter = "All" | Priority;
 
 export default function AdminTasksPage() {
-  const [tasks, setTasks] = useState<Task[]>(INITIAL);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>("All");
   const [tagFilter, setTagFilter] = useState<"All" | Tag>("All");
@@ -88,6 +90,35 @@ export default function AdminTasksPage() {
 
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(null), 2400); }
 
+  useEffect(() => { loadTasks(); }, []);
+
+  async function loadTasks() {
+    try {
+      setLoading(true);
+      const res = await api.getAdminTasks();
+      if (res.success && res.data.length > 0) {
+        setTasks(res.data.map((t: any) => ({
+          id: String(t.id),
+          title: t.title,
+          description: t.description || "",
+          assignee: t.assignee || "Admin",
+          assigneeAvatar: t.assignee_avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${t.assignee}`,
+          priority: t.priority as Priority,
+          due: t.due ? String(t.due).slice(0, 10) : "",
+          status: t.status as TaskStatus,
+          tag: t.tag as Tag,
+          checklist: Array.isArray(t.checklist) ? t.checklist : [],
+        })));
+      } else {
+        setTasks(INITIAL);
+      }
+    } catch {
+      setTasks(INITIAL);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   const filtered = useMemo(() => tasks.filter(t => {
     const q = search.toLowerCase();
     if (q && !t.title.toLowerCase().includes(q) && !t.description.toLowerCase().includes(q) && !t.assignee.toLowerCase().includes(q)) return false;
@@ -96,17 +127,52 @@ export default function AdminTasksPage() {
     return true;
   }), [tasks, search, priorityFilter, tagFilter]);
 
-  function moveTask(id: string, to: TaskStatus) { setTasks(ts => ts.map(t => t.id === id ? { ...t, status: to } : t)); showToast(`Moved to ${to}`); }
-  function addTask(t: Task) { setTasks(ts => [t, ...ts]); setShowCreate(false); showToast(`"${t.title}" added`); }
-  function updateTask(t: Task) { setTasks(ts => ts.map(x => x.id === t.id ? t : x)); setEditTask(null); setViewTask(t); showToast("Task updated"); }
-  function toggleCheck(taskId: string, idx: number) {
-    setTasks(ts => ts.map(t => t.id === taskId ? { ...t, checklist: t.checklist.map((c, i) => i === idx ? { ...c, done: !c.done } : c) } : t));
+  async function moveTask(id: string, to: TaskStatus) {
+    try {
+      await api.updateAdminTask(id, { status: to });
+      setTasks(ts => ts.map(t => t.id === id ? { ...t, status: to } : t));
+      showToast(`Moved to ${to}`);
+    } catch { showToast("Failed to move task"); }
   }
-  function removeTask() {
+  async function addTask(t: Task) {
+    try {
+      const res = await api.createAdminTask({
+        title: t.title, description: t.description, assignee: t.assignee,
+        assignee_avatar: t.assigneeAvatar, priority: t.priority,
+        due: t.due || null, status: t.status, tag: t.tag, checklist: t.checklist,
+      });
+      const created: Task = { ...t, id: String(res.data?.id || Date.now()) };
+      setTasks(ts => [created, ...ts]); setShowCreate(false);
+      showToast(`"${t.title}" added`);
+    } catch (err: any) { showToast(err.message || "Failed to create task"); }
+  }
+  async function updateTask(t: Task) {
+    try {
+      await api.updateAdminTask(t.id, {
+        title: t.title, description: t.description, assignee: t.assignee,
+        assignee_avatar: t.assigneeAvatar, priority: t.priority,
+        due: t.due || null, status: t.status, tag: t.tag, checklist: t.checklist,
+      });
+      setTasks(ts => ts.map(x => x.id === t.id ? t : x)); setEditTask(null); setViewTask(t);
+      showToast("Task updated");
+    } catch (err: any) { showToast(err.message || "Failed to update task"); }
+  }
+  async function toggleCheck(taskId: string, idx: number) {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const newChecklist = task.checklist.map((c, i) => i === idx ? { ...c, done: !c.done } : c);
+    try {
+      await api.updateAdminTask(taskId, { checklist: newChecklist });
+      setTasks(ts => ts.map(t => t.id === taskId ? { ...t, checklist: newChecklist } : t));
+    } catch { setTasks(ts => ts.map(t => t.id === taskId ? { ...t, checklist: newChecklist } : t)); }
+  }
+  async function removeTask() {
     if (!deleteTask) return;
-    setTasks(ts => ts.filter(t => t.id !== deleteTask.id));
-    showToast("Task deleted");
-    setDeleteTask(null); setViewTask(null);
+    try {
+      await api.deleteAdminTask(deleteTask.id);
+      setTasks(ts => ts.filter(t => t.id !== deleteTask.id));
+      showToast("Task deleted"); setDeleteTask(null); setViewTask(null);
+    } catch (err: any) { showToast(err.message || "Failed to delete task"); }
   }
 
   /* stats */

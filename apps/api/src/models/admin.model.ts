@@ -797,3 +797,530 @@ export async function deleteParent(parentId: number): Promise<boolean> {
     client.release();
   }
 }
+
+// ============================================
+// EXAMS
+// ============================================
+
+export async function ensureExamsTable(): Promise<void> {
+  await query(`
+    CREATE TABLE IF NOT EXISTS exams (
+      id SERIAL PRIMARY KEY,
+      title VARCHAR(255) NOT NULL,
+      subject VARCHAR(100) NOT NULL,
+      type VARCHAR(50) NOT NULL DEFAULT 'Quiz',
+      grade VARCHAR(50),
+      teacher_name VARCHAR(150),
+      date DATE NOT NULL,
+      start_time VARCHAR(10),
+      end_time VARCHAR(10),
+      duration INTEGER DEFAULT 60,
+      location VARCHAR(255) DEFAULT 'TBD',
+      total_marks INTEGER DEFAULT 100,
+      pass_marks INTEGER DEFAULT 40,
+      status VARCHAR(50) DEFAULT 'Upcoming',
+      enrolled INTEGER DEFAULT 0,
+      instructions TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  // Add teacher_name if missing on existing tables
+  await query(`ALTER TABLE exams ADD COLUMN IF NOT EXISTS teacher_name VARCHAR(150)`);
+}
+
+export async function getAllExams(filters?: { status?: string; grade?: string; search?: string }): Promise<any[]> {
+  try {
+    await ensureExamsTable();
+    let sql = `
+      SELECT e.*
+      FROM exams e
+      WHERE 1=1
+    `;
+    const params: any[] = [];
+    let i = 1;
+    if (filters?.status && filters.status !== 'All') { sql += ` AND e.status = $${i++}`; params.push(filters.status); }
+    if (filters?.grade && filters.grade !== 'All') { sql += ` AND e.grade = $${i++}`; params.push(filters.grade); }
+    if (filters?.search) { sql += ` AND (e.title ILIKE $${i} OR e.subject ILIKE $${i})`; params.push(`%${filters.search}%`); i++; }
+    sql += ` ORDER BY e.date DESC`;
+    const res = await query(sql, params);
+    return res.rows;
+  } catch (error) {
+    console.error('getAllExams error:', error);
+    return [];
+  }
+}
+
+export async function createExam(data: any): Promise<any> {
+  await ensureExamsTable();
+  const res = await query(
+    `INSERT INTO exams (title, subject, type, grade, teacher_name, date, start_time, end_time, duration, location, total_marks, pass_marks, status, enrolled, instructions)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
+    [data.title, data.subject, data.type || 'Quiz', data.grade, data.teacher_name || null,
+     data.date, data.start_time || '09:00', data.end_time || '10:00', data.duration || 60,
+     data.location || 'TBD', data.total_marks || 100, data.pass_marks || 40,
+     data.status || 'Upcoming', data.enrolled || 0, data.instructions || '']
+  );
+  return res.rows[0];
+}
+
+export async function updateExam(examId: number, data: any): Promise<any> {
+  const fields = ['title','subject','type','grade','teacher_name','date','start_time','end_time','duration','location','total_marks','pass_marks','status','enrolled','instructions'];
+  const updates: string[] = [];
+  const values: any[] = [];
+  let i = 1;
+  for (const f of fields) {
+    if (data[f] !== undefined) { updates.push(`${f} = $${i++}`); values.push(data[f]); }
+  }
+  if (!updates.length) return null;
+  values.push(examId);
+  const res = await query(`UPDATE exams SET ${updates.join(', ')} WHERE id = $${i} RETURNING *`, values);
+  return res.rows[0];
+}
+
+export async function deleteExam(examId: number): Promise<boolean> {
+  const res = await query('DELETE FROM exams WHERE id = $1 RETURNING id', [examId]);
+  return (res.rowCount ?? 0) > 0;
+}
+
+// ============================================
+// ATTENDANCE
+// ============================================
+
+export async function ensureAttendanceTable(): Promise<void> {
+  await query(`
+    CREATE TABLE IF NOT EXISTS attendance (
+      id SERIAL PRIMARY KEY,
+      student_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      date DATE NOT NULL,
+      status VARCHAR(20) NOT NULL DEFAULT 'Present',
+      note TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(student_id, date)
+    )
+  `);
+}
+
+export async function getAttendanceStudents(filters?: { grade?: string; search?: string }): Promise<any[]> {
+  try {
+    await ensureAttendanceTable();
+    let sql = `
+      SELECT
+        u.id, u.full_name AS name, u.email,
+        u.grade_level,
+        u.phone,
+        COUNT(a.id) FILTER (WHERE a.status = 'Present') AS present_days,
+        COUNT(a.id) FILTER (WHERE a.status = 'Absent')  AS absent_days,
+        COUNT(a.id) FILTER (WHERE a.status = 'Late')    AS late_days,
+        COUNT(a.id) FILTER (WHERE a.status = 'Excused') AS excused_days,
+        COUNT(a.id) AS total_recorded,
+        json_agg(json_build_object('date', a.date, 'status', a.status) ORDER BY a.date DESC) FILTER (WHERE a.id IS NOT NULL) AS history
+      FROM users u
+      LEFT JOIN student_profiles sp ON sp.user_id = u.id
+      LEFT JOIN attendance a ON a.student_id = u.id
+      WHERE u.role = 'student' AND u.is_active = true
+    `;
+    const params: any[] = [];
+    let i = 1;
+    if (filters?.grade && filters.grade !== 'All') { sql += ` AND u.grade_level = $${i++}`; params.push(parseInt(filters.grade.replace('Grade ', ''))); }
+    if (filters?.search) { sql += ` AND (u.full_name ILIKE $${i} OR u.email ILIKE $${i})`; params.push(`%${filters.search}%`); i++; }
+    sql += ` GROUP BY u.id, u.full_name, u.email, u.grade_level, sp.phone ORDER BY u.full_name`;
+    const res = await query(sql, params);
+    return res.rows;
+  } catch (error) {
+    console.error('getAttendanceStudents error:', error);
+    return [];
+  }
+}
+
+export async function upsertAttendance(studentId: number, date: string, status: string, note?: string): Promise<any> {
+  await ensureAttendanceTable();
+  const res = await query(
+    `INSERT INTO attendance (student_id, date, status, note)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (student_id, date) DO UPDATE SET status = $3, note = $4
+     RETURNING *`,
+    [studentId, date, status, note || null]
+  );
+  return res.rows[0];
+}
+
+export async function getAttendanceSummary(): Promise<any> {
+  try {
+    await ensureAttendanceTable();
+    const today = new Date().toISOString().slice(0, 10);
+    const res = await query(`
+      SELECT
+        COUNT(*) FILTER (WHERE a.status = 'Present' AND a.date = $1) AS today_present,
+        COUNT(*) FILTER (WHERE a.status = 'Absent'  AND a.date = $1) AS today_absent,
+        COUNT(*) FILTER (WHERE a.status = 'Late'    AND a.date = $1) AS today_late,
+        COUNT(DISTINCT u.id) AS total_students
+      FROM users u
+      LEFT JOIN attendance a ON a.student_id = u.id
+      WHERE u.role = 'student' AND u.is_active = true
+    `, [today]);
+    return res.rows[0];
+  } catch (error) {
+    console.error('getAttendanceSummary error:', error);
+    return { today_present: 0, today_absent: 0, today_late: 0, total_students: 0 };
+  }
+}
+
+// ============================================
+// ANNOUNCEMENTS
+// ============================================
+
+export async function ensureAnnouncementsTable(): Promise<void> {
+  await query(`
+    CREATE TABLE IF NOT EXISTS announcements (
+      id SERIAL PRIMARY KEY,
+      title VARCHAR(255) NOT NULL,
+      body TEXT NOT NULL,
+      audience VARCHAR(50) DEFAULT 'All',
+      status VARCHAR(50) DEFAULT 'Published',
+      priority VARCHAR(50) DEFAULT 'Normal',
+      pinned BOOLEAN DEFAULT false,
+      author_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      author_name VARCHAR(150),
+      author_role VARCHAR(100) DEFAULT 'Admin',
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      scheduled_at TIMESTAMPTZ
+    )
+  `);
+  // Add any missing columns on pre-existing tables
+  await query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS pinned BOOLEAN DEFAULT false`);
+  await query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS views INTEGER DEFAULT 0`);
+  await query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS priority VARCHAR(50) DEFAULT 'Normal'`);
+  await query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS audience VARCHAR(50) DEFAULT 'All'`);
+  await query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'Published'`);
+  await query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS author_name VARCHAR(150)`);
+  await query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS author_role VARCHAR(100) DEFAULT 'Admin'`);
+  await query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMPTZ`);
+}
+
+export async function getAllAnnouncements(filters?: { audience?: string; status?: string; search?: string }): Promise<any[]> {
+  try {
+    await ensureAnnouncementsTable();
+    let sql = `SELECT * FROM announcements WHERE 1=1`;
+    const params: any[] = [];
+    let i = 1;
+    if (filters?.audience && filters.audience !== 'All') { sql += ` AND audience = $${i++}`; params.push(filters.audience); }
+    if (filters?.status && filters.status !== 'All') { sql += ` AND status = $${i++}`; params.push(filters.status); }
+    if (filters?.search) { sql += ` AND (title ILIKE $${i} OR body ILIKE $${i})`; params.push(`%${filters.search}%`); i++; }
+    sql += ` ORDER BY pinned DESC, created_at DESC`;
+    const res = await query(sql, params);
+    return res.rows;
+  } catch (error) {
+    console.error('getAllAnnouncements error:', error);
+    return [];
+  }
+}
+
+export async function createAnnouncement(data: any): Promise<any> {
+  await ensureAnnouncementsTable();
+  const res = await query(
+    `INSERT INTO announcements (title, body, audience, status, priority, pinned, author_id, author_name, author_role)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+    [data.title, data.body, data.audience || 'All', data.status || 'Published',
+     data.priority || 'Normal', data.pinned || false,
+     data.author_id || null, data.author_name || 'Admin', data.author_role || 'Admin']
+  );
+  return res.rows[0];
+}
+
+export async function updateAnnouncement(id: number, data: any): Promise<any> {
+  await ensureAnnouncementsTable();
+  const fields = ['title','body','audience','status','priority','pinned','views','scheduled_at','author_name','author_role'];
+  const updates: string[] = [];
+  const values: any[] = [];
+  let i = 1;
+  for (const f of fields) {
+    if (data[f] !== undefined) { updates.push(`${f} = $${i++}`); values.push(data[f]); }
+  }
+  if (!updates.length) return null;
+  const numId = typeof id === 'number' ? id : parseInt(String(id), 10);
+  if (isNaN(numId)) return null;
+  values.push(numId);
+  const res = await query(`UPDATE announcements SET ${updates.join(', ')} WHERE id = $${i} RETURNING *`, values);
+  return res.rows[0];
+}
+
+export async function deleteAnnouncement(id: number): Promise<boolean> {
+  const numId = typeof id === 'number' ? id : parseInt(String(id), 10);
+  if (isNaN(numId)) return false;
+  const res = await query('DELETE FROM announcements WHERE id = $1 RETURNING id', [numId]);
+  return (res.rowCount ?? 0) > 0;
+}
+
+// ============================================
+// CALENDAR EVENTS
+// ============================================
+
+export async function ensureCalendarTable(): Promise<void> {
+  await query(`
+    CREATE TABLE IF NOT EXISTS calendar_events (
+      id SERIAL PRIMARY KEY,
+      title VARCHAR(255) NOT NULL,
+      date DATE NOT NULL,
+      end_date DATE,
+      start_time VARCHAR(10),
+      end_time VARCHAR(10),
+      all_day BOOLEAN DEFAULT false,
+      location VARCHAR(255),
+      type VARCHAR(50) DEFAULT 'class',
+      description TEXT,
+      attendees VARCHAR(255),
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+}
+
+export async function getAllCalendarEvents(filters?: { type?: string; month?: number; year?: number }): Promise<any[]> {
+  try {
+    await ensureCalendarTable();
+    let sql = `SELECT * FROM calendar_events WHERE 1=1`;
+    const params: any[] = [];
+    let i = 1;
+    if (filters?.type && filters.type !== 'all') { sql += ` AND type = $${i++}`; params.push(filters.type); }
+    if (filters?.year && filters.month !== undefined) {
+      const start = `${filters.year}-${String(filters.month + 1).padStart(2, '0')}-01`;
+      const end = new Date(filters.year, filters.month + 1, 1).toISOString().slice(0, 10);
+      sql += ` AND date >= $${i++} AND date < $${i++}`;
+      params.push(start, end);
+    }
+    sql += ` ORDER BY date ASC`;
+    const res = await query(sql, params);
+    return res.rows;
+  } catch (error) {
+    console.error('getAllCalendarEvents error:', error);
+    return [];
+  }
+}
+
+export async function createCalendarEvent(data: any): Promise<any> {
+  await ensureCalendarTable();
+  const res = await query(
+    `INSERT INTO calendar_events (title, date, end_date, start_time, end_time, all_day, location, type, description, attendees)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+    [data.title, data.date, data.end_date || null, data.start_time || null,
+     data.end_time || null, data.all_day || false, data.location || null,
+     data.type || 'class', data.description || null, data.attendees || null]
+  );
+  return res.rows[0];
+}
+
+export async function updateCalendarEvent(id: number, data: any): Promise<any> {
+  const fields = ['title','date','end_date','start_time','end_time','all_day','location','type','description','attendees'];
+  const updates: string[] = [];
+  const values: any[] = [];
+  let i = 1;
+  for (const f of fields) {
+    if (data[f] !== undefined) { updates.push(`${f} = $${i++}`); values.push(data[f]); }
+  }
+  if (!updates.length) return null;
+  values.push(id);
+  const res = await query(`UPDATE calendar_events SET ${updates.join(', ')} WHERE id = $${i} RETURNING *`, values);
+  return res.rows[0];
+}
+
+export async function deleteCalendarEvent(id: number): Promise<boolean> {
+  const res = await query('DELETE FROM calendar_events WHERE id = $1 RETURNING id', [id]);
+  return (res.rowCount ?? 0) > 0;
+}
+
+// ============================================
+// TASKS
+// ============================================
+
+export async function ensureTasksTable(): Promise<void> {
+  await query(`
+    CREATE TABLE IF NOT EXISTS admin_tasks (
+      id SERIAL PRIMARY KEY,
+      title VARCHAR(255) NOT NULL,
+      description TEXT,
+      assignee VARCHAR(150),
+      assignee_avatar VARCHAR(500),
+      priority VARCHAR(50) DEFAULT 'Medium',
+      due DATE,
+      status VARCHAR(50) DEFAULT 'To Do',
+      tag VARCHAR(100) DEFAULT 'Administrative',
+      checklist JSONB DEFAULT '[]',
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+}
+
+export async function getAllTasks(filters?: { status?: string; priority?: string; search?: string }): Promise<any[]> {
+  try {
+    await ensureTasksTable();
+    let sql = `SELECT * FROM admin_tasks WHERE 1=1`;
+    const params: any[] = [];
+    let i = 1;
+    if (filters?.status && filters.status !== 'All') { sql += ` AND status = $${i++}`; params.push(filters.status); }
+    if (filters?.priority && filters.priority !== 'All') { sql += ` AND priority = $${i++}`; params.push(filters.priority); }
+    if (filters?.search) { sql += ` AND (title ILIKE $${i} OR description ILIKE $${i})`; params.push(`%${filters.search}%`); i++; }
+    sql += ` ORDER BY CASE priority WHEN 'High' THEN 1 WHEN 'Medium' THEN 2 ELSE 3 END, due ASC NULLS LAST`;
+    const res = await query(sql, params);
+    return res.rows;
+  } catch (error) {
+    console.error('getAllTasks error:', error);
+    return [];
+  }
+}
+
+export async function createTask(data: any): Promise<any> {
+  await ensureTasksTable();
+  const res = await query(
+    `INSERT INTO admin_tasks (title, description, assignee, assignee_avatar, priority, due, status, tag, checklist)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+    [data.title, data.description || '', data.assignee || 'Admin',
+     data.assignee_avatar || '', data.priority || 'Medium',
+     data.due || null, data.status || 'To Do', data.tag || 'Administrative',
+     JSON.stringify(data.checklist || [])]
+  );
+  return res.rows[0];
+}
+
+export async function updateTask(id: number, data: any): Promise<any> {
+  const fields = ['title','description','assignee','assignee_avatar','priority','due','status','tag','checklist'];
+  const updates: string[] = [];
+  const values: any[] = [];
+  let i = 1;
+  for (const f of fields) {
+    if (data[f] !== undefined) {
+      updates.push(`${f} = $${i++}`);
+      values.push(f === 'checklist' ? JSON.stringify(data[f]) : data[f]);
+    }
+  }
+  if (!updates.length) return null;
+  values.push(id);
+  const res = await query(`UPDATE admin_tasks SET ${updates.join(', ')} WHERE id = $${i} RETURNING *`, values);
+  return res.rows[0];
+}
+
+export async function deleteTask(id: number): Promise<boolean> {
+  const res = await query('DELETE FROM admin_tasks WHERE id = $1 RETURNING id', [id]);
+  return (res.rowCount ?? 0) > 0;
+}
+
+// ============================================
+// MESSAGES
+// ============================================
+
+export async function ensureMessagesTable(): Promise<void> {
+  await query(`
+    CREATE TABLE IF NOT EXISTS admin_messages (
+      id SERIAL PRIMARY KEY,
+      sender_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      recipient_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      sender_name VARCHAR(150),
+      recipient_name VARCHAR(150),
+      text TEXT NOT NULL,
+      direction VARCHAR(10) DEFAULT 'out',
+      read BOOLEAN DEFAULT false,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+}
+
+export async function getConversations(adminId: number): Promise<any[]> {
+  try {
+    await ensureMessagesTable();
+    const res = await query(`
+      SELECT DISTINCT ON (
+        LEAST(sender_id, recipient_id), GREATEST(sender_id, recipient_id)
+      )
+        m.id, m.sender_id, m.recipient_id,
+        m.sender_name, m.recipient_name,
+        m.text AS last_message,
+        m.created_at,
+        m.read,
+        m.direction,
+        CASE WHEN m.sender_id = $1 THEN m.recipient_id ELSE m.sender_id END AS other_user_id,
+        CASE WHEN m.sender_id = $1 THEN m.recipient_name ELSE m.sender_name END AS other_user_name,
+        u.role AS other_user_role
+      FROM admin_messages m
+      LEFT JOIN users u ON u.id = (CASE WHEN m.sender_id = $1 THEN m.recipient_id ELSE m.sender_id END)
+      WHERE m.sender_id = $1 OR m.recipient_id = $1
+      ORDER BY LEAST(sender_id, recipient_id), GREATEST(sender_id, recipient_id), m.created_at DESC
+    `, [adminId]);
+    return res.rows;
+  } catch (error) {
+    console.error('getConversations error:', error);
+    return [];
+  }
+}
+
+export async function getMessages(adminId: number, otherId: number): Promise<any[]> {
+  try {
+    await ensureMessagesTable();
+    const res = await query(`
+      SELECT * FROM admin_messages
+      WHERE (sender_id = $1 AND recipient_id = $2) OR (sender_id = $2 AND recipient_id = $1)
+      ORDER BY created_at ASC
+    `, [adminId, otherId]);
+    await query(`UPDATE admin_messages SET read = true WHERE recipient_id = $1 AND sender_id = $2 AND read = false`, [adminId, otherId]);
+    return res.rows;
+  } catch (error) {
+    console.error('getMessages error:', error);
+    return [];
+  }
+}
+
+export async function sendMessage(data: { sender_id: number; recipient_id: number; sender_name: string; recipient_name: string; text: string }): Promise<any> {
+  await ensureMessagesTable();
+  const res = await query(
+    `INSERT INTO admin_messages (sender_id, recipient_id, sender_name, recipient_name, text, direction)
+     VALUES ($1,$2,$3,$4,$5,'out') RETURNING *`,
+    [data.sender_id, data.recipient_id, data.sender_name, data.recipient_name, data.text]
+  );
+  return res.rows[0];
+}
+
+export async function getUnreadCount(userId: number): Promise<number> {
+  try {
+    await ensureMessagesTable();
+    const res = await query(`SELECT COUNT(*) FROM admin_messages WHERE recipient_id = $1 AND read = false`, [userId]);
+    return parseInt(res.rows[0].count, 10);
+  } catch {
+    return 0;
+  }
+}
+
+// ============================================
+// PAGE SETTINGS
+// ============================================
+
+export async function ensurePageSettingsTable(): Promise<void> {
+  await query(`
+    CREATE TABLE IF NOT EXISTS admin_page_settings (
+      id SERIAL PRIMARY KEY,
+      route VARCHAR(255) NOT NULL UNIQUE,
+      visible BOOLEAN DEFAULT true,
+      visibility VARCHAR(50) DEFAULT 'Role-Based',
+      description TEXT,
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+}
+
+export async function getAllPageSettings(): Promise<any[]> {
+  await ensurePageSettingsTable();
+  const res = await query(`SELECT * FROM admin_page_settings ORDER BY route`);
+  return res.rows;
+}
+
+export async function upsertPageSetting(route: string, data: { visible?: boolean; visibility?: string; description?: string }): Promise<any> {
+  await ensurePageSettingsTable();
+  const res = await query(
+    `INSERT INTO admin_page_settings (route, visible, visibility, description, updated_at)
+     VALUES ($1, $2, $3, $4, NOW())
+     ON CONFLICT (route) DO UPDATE SET
+       visible = EXCLUDED.visible,
+       visibility = EXCLUDED.visibility,
+       description = EXCLUDED.description,
+       updated_at = NOW()
+     RETURNING *`,
+    [route, data.visible ?? true, data.visibility ?? 'Role-Based', data.description ?? '']
+  );
+  return res.rows[0];
+}

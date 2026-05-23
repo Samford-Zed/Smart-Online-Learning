@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Search, Send, Plus, X, Paperclip } from "lucide-react";
 import { AdminSidebar } from "../components/AdminSidebar";
 import { AdminTopbar } from "../components/AdminTopbar";
+import { api } from "../../../services/api";
 
 type Message = { id: string; text: string; from: "me" | "them"; time: string; };
 
@@ -50,31 +51,104 @@ const CONVOS: Conversation[] = [
 ];
 
 export default function AdminMessagesPage() {
-  const [convos, setConvos] = useState(CONVOS);
-  const [activeId, setActiveId] = useState(CONVOS[0].id);
+  const [convos, setConvos] = useState<Conversation[]>(CONVOS);
+  const [activeId, setActiveId] = useState<string>(CONVOS[0].id);
   const [draft, setDraft] = useState("");
   const [search, setSearch] = useState("");
   const [showNew, setShowNew] = useState(false);
+  const [newTo, setNewTo] = useState("");
+  const [newMsg, setNewMsg] = useState("");
+  const [loadingConvos, setLoadingConvos] = useState(false);
+  const [sending, setSending] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const active = convos.find(c => c.id === activeId)!;
+  useEffect(() => { loadConversations(); }, []);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [activeId, convos]);
+
+  async function loadConversations() {
+    try {
+      setLoadingConvos(true);
+      const res = await api.getAdminConversations();
+      if (res.success && res.data.length > 0) {
+        const mapped: Conversation[] = res.data.map((c: any) => ({
+          id: String(c.other_user_id),
+          name: c.other_user_name || "Unknown",
+          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${c.other_user_name || c.other_user_id}`,
+          role: c.other_user_role || "User",
+          lastMessage: c.last_message || "",
+          time: new Date(c.created_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
+          unread: c.read === false && c.direction !== "out" ? 1 : 0,
+          messages: [],
+        }));
+        setConvos(mapped);
+        if (mapped.length > 0) {
+          setActiveId(mapped[0].id);
+          await loadMessages(mapped[0].id);
+        }
+      }
+    } catch {
+      // keep mock data
+    } finally {
+      setLoadingConvos(false);
+    }
+  }
+
+  async function loadMessages(userId: string) {
+    try {
+      const res = await api.getAdminMessages(userId);
+      if (res.success) {
+        const msgs: Message[] = res.data.map((m: any) => ({
+          id: String(m.id),
+          text: m.text,
+          from: m.direction === "out" ? "me" : "them" as "me" | "them",
+          time: new Date(m.created_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
+        }));
+        setConvos(cs => cs.map(c => c.id === userId
+          ? { ...c, messages: msgs, unread: 0 }
+          : c
+        ));
+      }
+    } catch {
+      // keep existing messages
+    }
+  }
+
+  const active = convos.find(c => c.id === activeId) ?? convos[0];
 
   const filteredConvos = convos.filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
     c.lastMessage.toLowerCase().includes(search.toLowerCase())
   );
 
-  function openConvo(id: string) {
+  async function openConvo(id: string) {
     setActiveId(id);
     setConvos(cs => cs.map(c => c.id === id ? { ...c, unread: 0 } : c));
+    await loadMessages(id);
   }
 
-  function sendMessage() {
-    if (!draft.trim()) return;
-    const msg: Message = { id: `msg${Date.now()}`, text: draft, from: "me", time: "Just now" };
+  async function sendMessage() {
+    if (!draft.trim() || !active) return;
+    const text = draft.trim();
+    const tempMsg: Message = { id: `tmp${Date.now()}`, text, from: "me", time: "Just now" };
     setConvos(cs => cs.map(c => c.id === activeId
-      ? { ...c, messages: [...c.messages, msg], lastMessage: draft, time: "Just now" }
+      ? { ...c, messages: [...c.messages, tempMsg], lastMessage: text, time: "Just now" }
       : c));
     setDraft("");
+    try {
+      setSending(true);
+      await api.sendAdminMessage({
+        recipient_id: parseInt(activeId, 10),
+        recipient_name: active.name,
+        text,
+      });
+    } catch {
+      // message already shown optimistically
+    } finally {
+      setSending(false);
+    }
   }
 
   function handleKey(e: React.KeyboardEvent) {
@@ -107,6 +181,7 @@ export default function AdminMessagesPage() {
                 </label>
               </div>
               <ul className="flex-1 overflow-y-auto">
+                {loadingConvos && <li className="px-4 py-3 text-xs text-ink-400">Loading…</li>}
                 {filteredConvos.map(c => (
                   <li key={c.id} onClick={() => openConvo(c.id)}
                     className={`flex cursor-pointer items-center gap-3 border-b border-ink-50 px-4 py-3 transition hover:bg-violet-50/50 ${activeId === c.id ? "bg-violet-50" : ""}`}>
@@ -141,7 +216,7 @@ export default function AdminMessagesPage() {
 
               {/* Messages */}
               <div className="flex-1 overflow-y-auto px-5 py-5 flex flex-col gap-3">
-                {active.messages.map(msg => (
+                {active?.messages.map(msg => (
                   <div key={msg.id} className={`flex ${msg.from === "me" ? "justify-end" : "justify-start"}`}>
                     {msg.from === "them" && (
                       <img src={active.avatar} alt="" className="mr-2.5 mt-auto size-7 rounded-full object-cover shrink-0" />
@@ -152,6 +227,7 @@ export default function AdminMessagesPage() {
                     </div>
                   </div>
                 ))}
+                <div ref={messagesEndRef} />
               </div>
 
               {/* Input */}
@@ -168,7 +244,7 @@ export default function AdminMessagesPage() {
                   />
                   <button onClick={sendMessage}
                     className="mb-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-violet-600 text-white transition hover:bg-violet-700 disabled:opacity-50"
-                    disabled={!draft.trim()}>
+                    disabled={!draft.trim() || sending}>
                     <Send className="size-3.5" />
                   </button>
                 </div>
@@ -187,16 +263,30 @@ export default function AdminMessagesPage() {
               <button onClick={() => setShowNew(false)} className="rounded-full p-1.5 hover:bg-ink-100"><X className="size-4 text-ink-500" /></button>
             </div>
             <label className="mb-4 flex flex-col gap-1.5">
-              <span className="text-xs font-semibold text-ink-700">To</span>
-              <input type="text" placeholder="Search teachers, parents..." className="h-10 rounded-xl border border-ink-200 px-3 text-sm outline-none focus:border-violet-400" />
+              <span className="text-xs font-semibold text-ink-700">Recipient Name</span>
+              <input type="text" value={newTo} onChange={e => setNewTo(e.target.value)} placeholder="Teacher or parent name..." className="h-10 rounded-xl border border-ink-200 px-3 text-sm outline-none focus:border-violet-400" />
             </label>
             <label className="mb-4 flex flex-col gap-1.5">
               <span className="text-xs font-semibold text-ink-700">Message</span>
-              <textarea rows={4} className="rounded-xl border border-ink-200 px-3 py-2 text-sm outline-none focus:border-violet-400 resize-none" placeholder="Write your message..." />
+              <textarea rows={4} value={newMsg} onChange={e => setNewMsg(e.target.value)} className="rounded-xl border border-ink-200 px-3 py-2 text-sm outline-none focus:border-violet-400 resize-none" placeholder="Write your message..." />
             </label>
             <div className="flex gap-3">
-              <button onClick={() => setShowNew(false)} className="flex-1 rounded-xl border border-ink-200 py-2.5 text-sm font-semibold text-ink-700 hover:bg-ink-50">Cancel</button>
-              <button onClick={() => setShowNew(false)} className="flex-1 rounded-xl bg-violet-600 py-2.5 text-sm font-semibold text-white hover:bg-violet-700">Send</button>
+              <button onClick={() => { setShowNew(false); setNewTo(""); setNewMsg(""); }} className="flex-1 rounded-xl border border-ink-200 py-2.5 text-sm font-semibold text-ink-700 hover:bg-ink-50">Cancel</button>
+              <button
+                disabled={!newTo.trim() || !newMsg.trim()}
+                onClick={async () => {
+                  if (!newTo.trim() || !newMsg.trim()) return;
+                  const placeholder: Conversation = {
+                    id: `new-${Date.now()}`, name: newTo.trim(),
+                    avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${newTo}`,
+                    role: "User", lastMessage: newMsg.trim(), time: "Just now", unread: 0,
+                    messages: [{ id: `m0`, text: newMsg.trim(), from: "me", time: "Just now" }],
+                  };
+                  setConvos(cs => [placeholder, ...cs]);
+                  setActiveId(placeholder.id);
+                  setShowNew(false); setNewTo(""); setNewMsg("");
+                }}
+                className="flex-1 rounded-xl bg-violet-600 py-2.5 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-50">Send</button>
             </div>
           </div>
         </div>

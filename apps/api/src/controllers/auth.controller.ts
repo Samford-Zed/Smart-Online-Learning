@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as AuthService from '../services/auth.service';
+import { pool } from '../db/index';
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -75,5 +76,30 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 };
 
 export const getMe = (req: Request, res: Response): void => {
-  res.status(200).json(req.auth);
+  res.status(200).json((req as any).auth);
+};
+
+export const updateMe = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).auth?.userId || (req as any).auth?.id;
+    if (!userId) { res.status(401).json({ error: 'Unauthorized' }); return; }
+    const { full_name, phone, bio, address } = req.body;
+    const fields: string[] = [];
+    const values: any[] = [];
+    let i = 1;
+    if (full_name !== undefined) { fields.push(`full_name = $${i++}`); values.push(full_name); }
+    if (phone !== undefined)     { fields.push(`phone = $${i++}`); values.push(phone); }
+    if (bio !== undefined)       { fields.push(`bio = $${i++}`); values.push(bio); }
+    if (address !== undefined)   { fields.push(`address = $${i++}`); values.push(address); }
+    if (!fields.length) { res.json((req as any).auth); return; }
+    values.push(userId);
+    await pool.query(`UPDATE users SET ${fields.join(', ')} WHERE id = $${i}`, values);
+    const updated = await pool.query(
+      'SELECT id, full_name, email, role, phone, bio, address, created_at FROM users WHERE id = $1',
+      [userId]
+    );
+    res.json(updated.rows[0]);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to update profile' });
+  }
 };

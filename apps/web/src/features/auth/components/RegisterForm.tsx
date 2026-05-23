@@ -24,7 +24,6 @@ import {
 import { api } from "../../../services/api";
 
 const ROLE_OPTIONS = [
-  { value: "student", label: "Student", icon: GraduationCap, color: "text-brand",         bg: "bg-brand/5",         border: "border-brand"         },
   { value: "teacher", label: "Teacher", icon: BookOpen,       color: "text-emerald-600",   bg: "bg-emerald-50",      border: "border-emerald-500"   },
   { value: "parent",  label: "Parent",  icon: Users,          color: "text-violet-600",    bg: "bg-violet-50",       border: "border-violet-500"    },
 ];
@@ -143,27 +142,6 @@ export function RegisterForm() {
         </div>
       )}
 
-      {/* Grade Level - only for students */}
-      {selectedRole === "student" && (
-        <div className="flex flex-col gap-2">
-          <label htmlFor="gradeLevel" className="text-xs font-semibold text-ink-700">Grade Level</label>
-          <div className="relative">
-            <BookMarked className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-ink-400" aria-hidden />
-            <select
-              id="gradeLevel"
-              {...register("gradeLevel")}
-              className="h-12 w-full appearance-none rounded-xl border border-ink-200 bg-white pl-10 pr-4 text-sm text-ink-900 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
-            >
-              <option value="">Select grade</option>
-              {[...Array(12)].map((_, i) => (
-                <option key={i + 1} value={`Grade ${i + 1}`}>Grade {i + 1}</option>
-              ))}
-            </select>
-          </div>
-          {errors.gradeLevel && <span className="text-xs text-red-600">{errors.gradeLevel.message}</span>}
-        </div>
-      )}
-
       <div className="flex flex-col gap-4">
         {/* Full name */}
         <div className="flex flex-col gap-1.5">
@@ -215,6 +193,27 @@ export function RegisterForm() {
           {errors.password && <span className="text-xs text-red-600">{errors.password.message}</span>}
         </div>
 
+        {/* Grade Level - only for students */}
+        {selectedRole === "student" && (
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="gradeLevel" className="text-xs font-semibold text-ink-700">Grade Level</label>
+            <div className="relative">
+              <BookMarked className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-ink-400" aria-hidden />
+              <select
+                id="gradeLevel"
+                {...register("gradeLevel")}
+                className="h-12 w-full appearance-none rounded-xl border border-ink-200 bg-white pl-10 pr-4 text-sm text-ink-900 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
+              >
+                <option value="">Select grade</option>
+                {[...Array(12)].map((_, i) => (
+                  <option key={i + 1} value={`Grade ${i + 1}`}>Grade {i + 1}</option>
+                ))}
+              </select>
+            </div>
+            {errors.gradeLevel && <span className="text-xs text-red-600">{errors.gradeLevel.message}</span>}
+          </div>
+        )}
+
         {/* Terms */}
         <div className="flex flex-col gap-1">
           <label className="flex cursor-pointer items-start gap-2 text-sm text-ink-600">
@@ -261,6 +260,11 @@ export function RegisterForm() {
       <p className="text-center text-sm text-ink-500">
         Already have an account?{" "}
         <Link to="/login" className="font-semibold text-brand hover:underline">Sign in</Link>
+      </p>
+
+      <p className="text-center text-sm text-ink-400">
+        Need help?{" "}
+        <a href="#" className="text-brand hover:underline">Contact Support</a>
       </p>
     </form>
   );

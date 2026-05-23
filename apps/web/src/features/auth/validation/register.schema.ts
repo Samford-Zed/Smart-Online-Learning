@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const registerSchema = z.object({
-  role: z.enum(["student", "teacher", "parent"], {
+  role: z.enum(["teacher", "parent"], {
     errorMap: () => ({ message: "Please select a role" }),
   }),
   fullName: z
@@ -24,9 +24,6 @@ export const registerSchema = z.object({
   acceptTerms: z.literal(true, {
     errorMap: () => ({ message: "You must accept the Terms and Conditions" }),
   }),
-}).refine((data) => data.role !== "student" || (data.gradeLevel && data.gradeLevel.length > 0), {
-  message: "Grade level is required for students",
-  path: ["gradeLevel"],
 });
 
 export type RegisterFormValues = z.infer<typeof registerSchema>;

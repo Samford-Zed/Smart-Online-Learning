@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   ChevronLeft, ChevronRight, Plus, X, Clock, MapPin, Calendar as CalendarIcon,
   GraduationCap, Users as UsersIcon, BookOpen, Bell, Trash2, Pencil, Check, AlertTriangle,
@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { AdminSidebar } from "../components/AdminSidebar";
 import { AdminTopbar } from "../components/AdminTopbar";
+import { api } from "../../../services/api";
 
 /* ─────────────────────────── Types & Categories ─────────────────────────── */
 type EventType = "curriculum" | "class" | "meeting" | "exam" | "holiday" | "assignment";
@@ -93,7 +94,7 @@ export default function AdminCalendarPage() {
   const today = new Date();
   const [cursor, setCursor] = useState(new Date(today.getFullYear(), today.getMonth(), today.getDate()));
   const [view, setView] = useState<View>("month");
-  const [events, setEvents] = useState<CalEvent[]>(buildInitial);
+  const [events, setEvents] = useState<CalEvent[]>(buildInitial());
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<Record<EventType, boolean>>({ curriculum:true, class:true, meeting:true, exam:true, holiday:true, assignment:true });
 
@@ -106,6 +107,32 @@ export default function AdminCalendarPage() {
   const [toast, setToast] = useState<string | null>(null);
 
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(null), 2400); }
+
+  useEffect(() => { loadEvents(); }, []);
+
+  async function loadEvents() {
+    try {
+      const res = await api.getAdminCalendar();
+      if (res.success && res.data.length > 0) {
+        const mapped: CalEvent[] = res.data.map((e: any) => ({
+          id: String(e.id),
+          title: e.title,
+          date: String(e.date).slice(0, 10),
+          endDate: e.end_date ? String(e.end_date).slice(0, 10) : undefined,
+          startTime: e.start_time || undefined,
+          endTime: e.end_time || undefined,
+          allDay: e.all_day,
+          location: e.location || undefined,
+          type: e.type as EventType,
+          description: e.description || undefined,
+          attendees: e.attendees || undefined,
+        }));
+        setEvents(mapped);
+      }
+    } catch {
+      // keep initial mock data on error
+    }
+  }
 
   /* nav */
   function navigate(dir: -1 | 0 | 1) {
@@ -134,13 +161,38 @@ export default function AdminCalendarPage() {
   }
 
   /* CRUD */
-  function addEvent(e: CalEvent) { setEvents(es => [...es, e]); setShowAdd(false); setAddPrefill(null); showToast(`"${e.title}" added`); }
-  function updateEvent(e: CalEvent) { setEvents(es => es.map(x => x.id === e.id ? e : x)); setEditEvent(null); setViewEvent(null); showToast("Event updated"); }
-  function removeEvent() {
+  async function addEvent(e: CalEvent) {
+    try {
+      const res = await api.createAdminCalendarEvent({
+        title: e.title, date: e.date, end_date: e.endDate || null,
+        start_time: e.startTime || null, end_time: e.endTime || null,
+        all_day: e.allDay || false, location: e.location || null,
+        type: e.type, description: e.description || null, attendees: e.attendees || null,
+      });
+      const created: CalEvent = { ...e, id: String(res.data?.id || Date.now()) };
+      setEvents(es => [...es, created]); setShowAdd(false); setAddPrefill(null);
+      showToast(`"${e.title}" added`);
+    } catch (err: any) { showToast(err.message || "Failed to add event"); }
+  }
+  async function updateEvent(e: CalEvent) {
+    try {
+      await api.updateAdminCalendarEvent(e.id, {
+        title: e.title, date: e.date, end_date: e.endDate || null,
+        start_time: e.startTime || null, end_time: e.endTime || null,
+        all_day: e.allDay || false, location: e.location || null,
+        type: e.type, description: e.description || null, attendees: e.attendees || null,
+      });
+      setEvents(es => es.map(x => x.id === e.id ? e : x)); setEditEvent(null); setViewEvent(null);
+      showToast("Event updated");
+    } catch (err: any) { showToast(err.message || "Failed to update event"); }
+  }
+  async function removeEvent() {
     if (!deleteEvent) return;
-    setEvents(es => es.filter(e => e.id !== deleteEvent.id));
-    showToast("Event deleted");
-    setDeleteEvent(null); setViewEvent(null);
+    try {
+      await api.deleteAdminCalendarEvent(deleteEvent.id);
+      setEvents(es => es.filter(e => e.id !== deleteEvent.id));
+      showToast("Event deleted"); setDeleteEvent(null); setViewEvent(null);
+    } catch (err: any) { showToast(err.message || "Failed to delete event"); }
   }
 
   function openAddOnDate(d: Date) {

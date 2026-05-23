@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Plus, X, Megaphone, Pin, Trash2, Edit2, Search, Globe, Users, GraduationCap,
   Calendar, Eye, AlertTriangle, Check, MoreHorizontal, Sparkles, FileText,
@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { AdminSidebar } from "../components/AdminSidebar";
 import { AdminTopbar } from "../components/AdminTopbar";
+import { api } from "../../../services/api";
 
 type Audience = "All" | "Students" | "Teachers" | "Parents";
 type AnnouncementStatus = "Published" | "Draft" | "Scheduled";
@@ -58,7 +59,8 @@ const INITIAL: Announcement[] = [
 const AUDIENCES: Array<"All" | Audience> = ["All", "Students", "Teachers", "Parents"];
 
 export default function AdminAnnouncementsPage() {
-  const [items, setItems] = useState<Announcement[]>(INITIAL);
+  const [items, setItems] = useState<Announcement[]>([]);
+  const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [audienceFilter, setAudienceFilter] = useState<"All" | Audience>("All");
   const [statusFilter, setStatusFilter] = useState<"All" | AnnouncementStatus>("All");
@@ -71,6 +73,38 @@ export default function AdminAnnouncementsPage() {
 
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(null), 2400); }
 
+  useEffect(() => { loadItems(); }, []);
+
+  async function loadItems() {
+    try {
+      setLoading(true);
+      const res = await api.getAdminAnnouncements();
+      if (res.success && res.data.length > 0) {
+        setItems(res.data.map((a: any) => ({
+          id: String(a.id),
+          title: a.title,
+          body: a.body,
+          audience: a.audience as Audience,
+          status: a.status as AnnouncementStatus,
+          priority: a.priority as Priority,
+          pinned: a.pinned,
+          views: Number(a.views) || 0,
+          author: a.author_name || "Admin",
+          authorAvatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${a.author_name || a.id}`,
+          authorRole: a.author_role || "Admin",
+          date: new Date(a.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+          createdAt: a.created_at,
+        })));
+      } else {
+        setItems(INITIAL);
+      }
+    } catch {
+      setItems(INITIAL);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   const filtered = useMemo(() => items.filter(a => {
     const q = search.toLowerCase();
     if (q && !a.title.toLowerCase().includes(q) && !a.body.toLowerCase().includes(q) && !a.author.toLowerCase().includes(q)) return false;
@@ -82,29 +116,61 @@ export default function AdminAnnouncementsPage() {
   const pinned = filtered.filter(a => a.pinned);
   const rest   = filtered.filter(a => !a.pinned);
 
-  function togglePin(id: string) {
-    setItems(is => is.map(i => i.id === id ? { ...i, pinned: !i.pinned } : i));
+  async function togglePin(id: string) {
     const item = items.find(i => i.id === id);
-    showToast(item?.pinned ? "Unpinned" : "Pinned to top");
+    const newPinned = !item?.pinned;
+    try {
+      await api.updateAdminAnnouncement(id, { pinned: newPinned });
+      setItems(is => is.map(i => i.id === id ? { ...i, pinned: newPinned } : i));
+      showToast(newPinned ? "Pinned to top" : "Unpinned");
+    } catch { showToast("Failed to update"); }
   }
-  function changeStatus(id: string, st: AnnouncementStatus) {
-    setItems(is => is.map(i => i.id === id ? { ...i, status: st } : i));
-    if (viewItem?.id === id) setViewItem(v => v ? { ...v, status: st } : v);
-    showToast(`Marked as ${st}`);
+  async function changeStatus(id: string, st: AnnouncementStatus) {
+    try {
+      await api.updateAdminAnnouncement(id, { status: st });
+      setItems(is => is.map(i => i.id === id ? { ...i, status: st } : i));
+      if (viewItem?.id === id) setViewItem(v => v ? { ...v, status: st } : v);
+      showToast(`Marked as ${st}`);
+    } catch { showToast("Failed to update status"); }
   }
-  function addItem(a: Announcement) { setItems(is => [a, ...is]); setShowCreate(false); showToast(`"${a.title}" published`); }
-  function updateItem(a: Announcement) { setItems(is => is.map(i => i.id === a.id ? a : i)); setEditItem(null); setViewItem(a); showToast("Announcement updated"); }
-  function removeItem() {
+  async function addItem(a: Announcement) {
+    try {
+      const res = await api.createAdminAnnouncement({
+        title: a.title, body: a.body, audience: a.audience,
+        status: a.status, priority: a.priority, pinned: a.pinned,
+        author_name: a.author, author_role: a.authorRole,
+      });
+      const created: Announcement = { ...a, id: String(res.data?.id || Date.now()) };
+      setItems(is => [created, ...is]); setShowCreate(false);
+      showToast(`"${a.title}" published`);
+    } catch (err: any) { showToast(err.message || "Failed to create"); }
+  }
+  async function updateItem(a: Announcement) {
+    try {
+      await api.updateAdminAnnouncement(a.id, {
+        title: a.title, body: a.body, audience: a.audience,
+        status: a.status, priority: a.priority, pinned: a.pinned,
+      });
+      setItems(is => is.map(i => i.id === a.id ? a : i)); setEditItem(null); setViewItem(a);
+      showToast("Announcement updated");
+    } catch (err: any) { showToast(err.message || "Failed to update"); }
+  }
+  async function removeItem() {
     if (!deleteItem) return;
-    setItems(is => is.filter(i => i.id !== deleteItem.id));
-    showToast("Announcement deleted");
-    setDeleteItem(null); setViewItem(null);
+    try {
+      await api.deleteAdminAnnouncement(deleteItem.id);
+      setItems(is => is.filter(i => i.id !== deleteItem.id));
+      showToast("Announcement deleted"); setDeleteItem(null); setViewItem(null);
+    } catch (err: any) { showToast(err.message || "Failed to delete"); }
   }
   function openView(a: Announcement) {
-    // increment view count once per open (only for Published)
     if (a.status === "Published") {
-      setItems(is => is.map(i => i.id === a.id ? { ...i, views: i.views + 1 } : i));
-      setViewItem({ ...a, views: a.views + 1 });
+      const newViews = a.views + 1;
+      if (!isNaN(Number(a.id))) {
+        api.updateAdminAnnouncement(a.id, { views: newViews }).catch(() => {});
+      }
+      setItems(is => is.map(i => i.id === a.id ? { ...i, views: newViews } : i));
+      setViewItem({ ...a, views: newViews });
     } else {
       setViewItem(a);
     }
@@ -131,6 +197,7 @@ export default function AdminAnnouncementsPage() {
         <AdminTopbar />
         <main className="mx-auto w-full max-w-[1100px] flex-1 px-6 pb-12 pt-6">
 
+          {loading && <div className="mb-4 text-sm text-ink-400 flex items-center gap-2"><span className="size-3.5 animate-spin rounded-full border-2 border-violet-500 border-t-transparent inline-block" />Loading…</div>}
           {/* Header */}
           <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between animate-fade-in-up">
             <div>

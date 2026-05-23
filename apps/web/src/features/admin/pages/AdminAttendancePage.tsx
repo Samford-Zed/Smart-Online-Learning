@@ -103,93 +103,99 @@ export default function AdminAttendancePage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Load students from API
-  useEffect(() => {
-    loadStudents();
-  }, []);
+  useEffect(() => { loadStudents(); }, []);
 
   async function loadStudents() {
     try {
       setLoading(true);
-      const response = await api.getAdminUsers({ role: 'student', limit: 1000 });
-      if (response.success) {
-        // Transform backend data to attendance format
-        const transformed = response.data.users.map((u: any, index: number) => {
-          const yearlyPercent = u.attendance || 85 + Math.floor(Math.random() * 15); // Default or random 85-100
+      const res = await api.getAdminAttendance();
+      if (res.success && res.data?.students) {
+        const transformed: Student[] = res.data.students.map((u: any) => {
+          const totalRecorded = Number(u.total_recorded) || 0;
+          const presentDays = Number(u.present_days) || 0;
+          const absentDays  = Number(u.absent_days)  || 0;
+          const lateDays    = Number(u.late_days)    || 0;
+          const totalYearDays = Math.max(totalRecorded, 60);
+          const yearlyPercent = totalRecorded > 0 ? Math.round(presentDays / totalRecorded * 100) : 100;
+          const rawHistory: { date: string; status: AttStatus }[] = (u.history || []).map((h: any) => ({
+            date: String(h.date).slice(0, 10),
+            status: h.status as AttStatus,
+          }));
+          const week = deriveWeekFromHistory(rawHistory);
+          const weekPresent = Object.values(week).filter(s => s === "Present").length;
+          const weekPercent = Math.round(weekPresent / 5 * 100);
           return {
             id: String(u.id),
             name: u.name,
             avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.name}`,
-            studentId: u.student_id || `PRE${String(u.id).padStart(5, '0')}`,
+            studentId: `PRE${String(u.id).padStart(5, '0')}`,
             grade: u.grade_level ? `Grade ${u.grade_level}` : 'Grade 9',
-            section: u.section || 'A',
-            email: u.email,
-            phone: u.phone || '+1 555-0100',
-            week: buildWeeklyAttendance(yearlyPercent, index),
-            percent: Math.round(yearlyPercent * (0.9 + Math.random() * 0.2)), // Simulate weekly variation
+            section: 'A',
+            email: u.email || '',
+            phone: u.phone || '—',
+            week,
+            percent: weekPercent,
             yearlyPercent,
-            streak: Math.floor(Math.random() * 30), // Random streak
-            totalDays: Math.floor(yearlyPercent * 60 / 100),
-            totalYearDays: 60,
-            dailyHistory: buildDailyHistory(yearlyPercent),
-            monthlyHistory: buildMonthlyHistory(yearlyPercent),
+            streak: computeStreak(rawHistory),
+            totalDays: presentDays,
+            totalYearDays,
+            dailyHistory: rawHistory.slice(0, 30),
+            monthlyHistory: buildMonthlyHistory(rawHistory),
           };
         });
         setStudents(transformed);
+      } else {
+        setStudents(MOCK);
       }
     } catch (error) {
       console.error("Failed to load attendance data:", error);
+      setStudents(MOCK);
     } finally {
       setLoading(false);
     }
   }
 
-  // Helper to generate weekly attendance based on yearly rate
-  function buildWeeklyAttendance(yearlyRate: number, seed: number): Record<"mon"|"tue"|"wed"|"thu"|"fri", AttStatus> {
-    const statuses: AttStatus[] = ["Present", "Present", "Present", "Present", "Present", "Late", "Absent"];
-    const week: any = {};
-    const days: ("mon"|"tue"|"wed"|"thu"|"fri")[] = ["mon", "tue", "wed", "thu", "fri"];
-    days.forEach((day, i) => {
-      const rand = Math.random() * 100;
-      if (rand < yearlyRate - 10) week[day] = "Present";
-      else if (rand < yearlyRate + 5) week[day] = "Late";
-      else if (rand < yearlyRate + 20) week[day] = "Absent";
-      else week[day] = "Excused";
-    });
-    return week;
-  }
-
-  // Helper to generate daily history based on yearly rate
-  function buildDailyHistory(yearlyRate: number): { date: string; status: AttStatus }[] {
-    const out: { date: string; status: AttStatus }[] = [];
+  function deriveWeekFromHistory(history: { date: string; status: AttStatus }[]): Record<"mon"|"tue"|"wed"|"thu"|"fri", AttStatus> {
     const today = new Date();
-    for (let i = 29; i >= 0; i--) {
+    const dayMap: Record<number, "mon"|"tue"|"wed"|"thu"|"fri"> = { 1: "mon", 2: "tue", 3: "wed", 4: "thu", 5: "fri" };
+    const week: Record<string, AttStatus> = { mon: "Absent", tue: "Absent", wed: "Absent", thu: "Absent", fri: "Absent" };
+    for (let i = 6; i >= 0; i--) {
       const d = new Date(today); d.setDate(d.getDate() - i);
-      const day = d.getDay();
-      if (day === 0 || day === 6) continue;
-      const rand = Math.random() * 100;
-      let status: AttStatus;
-      if (rand < yearlyRate - 10) status = "Present";
-      else if (rand < yearlyRate + 5) status = "Late";
-      else if (rand < yearlyRate + 20) status = "Absent";
-      else status = "Excused";
-      out.push({ date: d.toISOString().slice(0,10), status });
+      const dow = d.getDay();
+      const key = dayMap[dow];
+      if (!key) continue;
+      const dateStr = d.toISOString().slice(0, 10);
+      const entry = history.find(h => h.date === dateStr);
+      week[key] = entry ? entry.status : "Absent";
     }
-    return out;
+    return week as Record<"mon"|"tue"|"wed"|"thu"|"fri", AttStatus>;
   }
 
-  // Helper to generate monthly history
-  function buildMonthlyHistory(yearlyRate: number): { month: string; percent: number; present: number; absent: number; late: number }[] {
-    const months = ["May","Jun","Jul","Aug","Sep","Oct"];
-    return months.map((m) => {
-      const total = 22;
-      const variance = (Math.random() - 0.5) * 10;
-      const percent = Math.max(60, Math.min(100, Math.round(yearlyRate + variance)));
-      const present = Math.round(total * percent / 100);
-      const absent = Math.round((100 - percent) * total / 100 * 0.4);
-      const late = total - present - absent;
-      return { month: m, percent, present, absent: Math.max(0, absent), late: Math.max(0, late) };
-    });
+  function computeStreak(history: { date: string; status: AttStatus }[]): number {
+    let streak = 0;
+    const sorted = [...history].sort((a, b) => b.date.localeCompare(a.date));
+    for (const h of sorted) {
+      if (h.status === "Present") streak++;
+      else break;
+    }
+    return streak;
+  }
+
+  function buildMonthlyHistory(history: { date: string; status: AttStatus }[]): Student["monthlyHistory"] {
+    const months: Record<string, { present: number; absent: number; late: number; total: number }> = {};
+    for (const h of history) {
+      const m = new Date(h.date).toLocaleString("en-US", { month: "short" });
+      if (!months[m]) months[m] = { present: 0, absent: 0, late: 0, total: 0 };
+      months[m].total++;
+      if (h.status === "Present") months[m].present++;
+      else if (h.status === "Absent") months[m].absent++;
+      else if (h.status === "Late") months[m].late++;
+    }
+    return Object.entries(months).slice(-6).map(([month, d]) => ({
+      month,
+      percent: d.total > 0 ? Math.round(d.present / d.total * 100) : 0,
+      present: d.present, absent: d.absent, late: d.late,
+    }));
   }
 
   const filtered = useMemo(() => students.filter(r =>

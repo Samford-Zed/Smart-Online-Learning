@@ -50,14 +50,6 @@ export default function RegisterPage() {
       {/* Right: Form panel */}
       <section className="relative flex w-full flex-col items-center justify-center p-8 lg:w-1/2">
         <RegisterForm />
-
-        {/* Footer */}
-        <p className="absolute bottom-6 text-sm text-ink-500">
-          Need help?{" "}
-          <a href="#" className="text-brand hover:underline">
-            Contact Support
-          </a>
-        </p>
       </section>
     </main>
   );

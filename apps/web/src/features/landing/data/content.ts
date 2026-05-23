@@ -151,7 +151,7 @@ export const landingContent = {
     body:
       "Classes, quizzes, assignments, polls, and shared resources — everything teachers and learners need to communicate, collaborate, and assess understanding.",
     image:
-      "https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=900&q=80",
     imageAlt: "Teacher and student using a tablet",
   },
 
@@ -178,7 +178,7 @@ export const landingContent = {
     body:
       "Private chat and 1-on-1 video sessions let teachers give targeted help and parents stay close to their child's learning.",
     image:
-      "https://images.unsplash.com/photo-1573497019418-b400bb3ab074?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=900&q=80",
     imageAlt: "Two people on a video call",
   },
 
@@ -217,13 +217,13 @@ export const landingContent = {
         category: "NEWS",
         title: "EduSmart K-12 reaches 200 schools across Ethiopia",
         image:
-          "https://images.unsplash.com/photo-1497486751825-1233686d5d80?auto=format&fit=crop&w=600&q=80",
+          "https://i.pinimg.com/736x/23/d7/cf/23d7cfc087d1a7736c767707442557fc.jpg",
       },
       {
         category: "GUIDE",
         title: "5 ways to keep students engaged in live online classes",
         image:
-          "https://images.unsplash.com/photo-1543269865-cbf427effbad?auto=format&fit=crop&w=600&q=80",
+          "https://ethionegari.com/wp-content/uploads/2024/09/SFTF-ethiopian-students-2-scaled.jpg",
       },
       {
         category: "PRODUCT",

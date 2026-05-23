@@ -12,7 +12,6 @@ import {
   HelpCircle,
   LogOut,
   ChevronDown,
-  UserCircle,
   ClipboardCheck,
   LayoutGrid,
   ClipboardList,
@@ -53,7 +52,6 @@ const items: NavItem[] = [
   { key: "userManagement", tKey: "userManagement", icon: UserCog,         to: "/admin/users" },
   { key: "analytics",      tKey: "analytics",      icon: LineChart,       to: "/admin/analytics" },
   { key: "managePages",    tKey: "managePages",    icon: LayoutGrid,      to: "/admin/manage-pages" },
-  { key: "account",        tKey: "account",        icon: UserCircle,      to: "/admin/account" },
 ];
 
 export function AdminSidebar() {

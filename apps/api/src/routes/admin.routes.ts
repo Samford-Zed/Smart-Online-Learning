@@ -667,4 +667,276 @@ router.delete("/parents/:id", async (req, res) => {
   }
 });
 
+// ============================================
+// EXAMS
+// ============================================
+
+router.get("/exams", async (req, res) => {
+  try {
+    const { status, grade, search } = req.query;
+    const exams = await adminModel.getAllExams({ status: status as string, grade: grade as string, search: search as string });
+    res.json({ success: true, data: exams });
+  } catch (error) {
+    console.error("Get exams error:", error);
+    res.status(500).json({ success: false, message: "Failed to load exams" });
+  }
+});
+
+router.post("/exams", async (req, res) => {
+  try {
+    const exam = await adminModel.createExam(req.body);
+    res.status(201).json({ success: true, data: exam });
+  } catch (error) {
+    console.error("Create exam error:", error);
+    res.status(500).json({ success: false, message: "Failed to create exam" });
+  }
+});
+
+router.put("/exams/:id", async (req, res) => {
+  try {
+    const examId = parseInt(req.params.id, 10);
+    const exam = await adminModel.updateExam(examId, req.body);
+    if (!exam) return res.status(404).json({ success: false, message: "Exam not found" });
+    res.json({ success: true, data: exam });
+  } catch (error) {
+    console.error("Update exam error:", error);
+    res.status(500).json({ success: false, message: "Failed to update exam" });
+  }
+});
+
+router.delete("/exams/:id", async (req, res) => {
+  try {
+    const examId = parseInt(req.params.id, 10);
+    const ok = await adminModel.deleteExam(examId);
+    if (!ok) return res.status(404).json({ success: false, message: "Exam not found" });
+    res.json({ success: true, message: "Exam deleted" });
+  } catch (error) {
+    console.error("Delete exam error:", error);
+    res.status(500).json({ success: false, message: "Failed to delete exam" });
+  }
+});
+
+// ============================================
+// ATTENDANCE
+// ============================================
+
+router.get("/attendance", async (req, res) => {
+  try {
+    const { grade, search } = req.query;
+    const students = await adminModel.getAttendanceStudents({ grade: grade as string, search: search as string });
+    const summary = await adminModel.getAttendanceSummary();
+    res.json({ success: true, data: { students, summary } });
+  } catch (error) {
+    console.error("Get attendance error:", error);
+    res.status(500).json({ success: false, message: "Failed to load attendance" });
+  }
+});
+
+router.post("/attendance", async (req, res) => {
+  try {
+    const { student_id, date, status, note } = req.body;
+    if (!student_id || !date || !status) {
+      return res.status(400).json({ success: false, message: "student_id, date, and status are required" });
+    }
+    const record = await adminModel.upsertAttendance(student_id, date, status, note);
+    res.json({ success: true, data: record });
+  } catch (error) {
+    console.error("Upsert attendance error:", error);
+    res.status(500).json({ success: false, message: "Failed to save attendance" });
+  }
+});
+
+// ============================================
+// ANNOUNCEMENTS
+// ============================================
+
+router.get("/announcements", async (req, res) => {
+  try {
+    const { audience, status, search } = req.query;
+    const data = await adminModel.getAllAnnouncements({ audience: audience as string, status: status as string, search: search as string });
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("Get announcements error:", error);
+    res.status(500).json({ success: false, message: "Failed to load announcements" });
+  }
+});
+
+router.post("/announcements", async (req, res) => {
+  try {
+    const item = await adminModel.createAnnouncement(req.body);
+    res.status(201).json({ success: true, data: item });
+  } catch (error) {
+    console.error("Create announcement error:", error);
+    res.status(500).json({ success: false, message: "Failed to create announcement" });
+  }
+});
+
+router.put("/announcements/:id", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) return res.status(400).json({ success: false, message: "Invalid id" });
+    const item = await adminModel.updateAnnouncement(id, req.body);
+    if (!item) return res.status(404).json({ success: false, message: "Announcement not found" });
+    res.json({ success: true, data: item });
+  } catch (error) {
+    console.error("Update announcement error:", error);
+    res.status(500).json({ success: false, message: "Failed to update announcement" });
+  }
+});
+
+router.delete("/announcements/:id", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) return res.status(400).json({ success: false, message: "Invalid id" });
+    const ok = await adminModel.deleteAnnouncement(id);
+    if (!ok) return res.status(404).json({ success: false, message: "Announcement not found" });
+    res.json({ success: true, message: "Announcement deleted" });
+  } catch (error) {
+    console.error("Delete announcement error:", error);
+    res.status(500).json({ success: false, message: "Failed to delete announcement" });
+  }
+});
+
+// ============================================
+// CALENDAR EVENTS
+// ============================================
+
+router.get("/calendar", async (req, res) => {
+  try {
+    const { type, month, year } = req.query;
+    const data = await adminModel.getAllCalendarEvents({
+      type: type as string,
+      month: month !== undefined ? parseInt(month as string, 10) : undefined,
+      year: year !== undefined ? parseInt(year as string, 10) : undefined,
+    });
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("Get calendar error:", error);
+    res.status(500).json({ success: false, message: "Failed to load calendar" });
+  }
+});
+
+router.post("/calendar", async (req, res) => {
+  try {
+    const event = await adminModel.createCalendarEvent(req.body);
+    res.status(201).json({ success: true, data: event });
+  } catch (error) {
+    console.error("Create event error:", error);
+    res.status(500).json({ success: false, message: "Failed to create event" });
+  }
+});
+
+router.put("/calendar/:id", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const event = await adminModel.updateCalendarEvent(id, req.body);
+    if (!event) return res.status(404).json({ success: false, message: "Event not found" });
+    res.json({ success: true, data: event });
+  } catch (error) {
+    console.error("Update event error:", error);
+    res.status(500).json({ success: false, message: "Failed to update event" });
+  }
+});
+
+router.delete("/calendar/:id", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const ok = await adminModel.deleteCalendarEvent(id);
+    if (!ok) return res.status(404).json({ success: false, message: "Event not found" });
+    res.json({ success: true, message: "Event deleted" });
+  } catch (error) {
+    console.error("Delete event error:", error);
+    res.status(500).json({ success: false, message: "Failed to delete event" });
+  }
+});
+
+// ============================================
+// TASKS
+// ============================================
+
+router.get("/tasks", async (req, res) => {
+  try {
+    const { status, priority, search } = req.query;
+    const data = await adminModel.getAllTasks({ status: status as string, priority: priority as string, search: search as string });
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("Get tasks error:", error);
+    res.status(500).json({ success: false, message: "Failed to load tasks" });
+  }
+});
+
+router.post("/tasks", async (req, res) => {
+  try {
+    const task = await adminModel.createTask(req.body);
+    res.status(201).json({ success: true, data: task });
+  } catch (error) {
+    console.error("Create task error:", error);
+    res.status(500).json({ success: false, message: "Failed to create task" });
+  }
+});
+
+router.put("/tasks/:id", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const task = await adminModel.updateTask(id, req.body);
+    if (!task) return res.status(404).json({ success: false, message: "Task not found" });
+    res.json({ success: true, data: task });
+  } catch (error) {
+    console.error("Update task error:", error);
+    res.status(500).json({ success: false, message: "Failed to update task" });
+  }
+});
+
+router.delete("/tasks/:id", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const ok = await adminModel.deleteTask(id);
+    if (!ok) return res.status(404).json({ success: false, message: "Task not found" });
+    res.json({ success: true, message: "Task deleted" });
+  } catch (error) {
+    console.error("Delete task error:", error);
+    res.status(500).json({ success: false, message: "Failed to delete task" });
+  }
+});
+
+// ============================================
+// MESSAGES
+// ============================================
+
+router.get("/messages/conversations", async (req, res) => {
+  try {
+    const adminId = parseInt((req as any).user?.id || "1", 10);
+    const data = await adminModel.getConversations(adminId);
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("Get conversations error:", error);
+    res.status(500).json({ success: false, message: "Failed to load conversations" });
+  }
+});
+
+router.get("/messages/:userId", async (req, res) => {
+  try {
+    const adminId = parseInt((req as any).user?.id || "1", 10);
+    const otherId = parseInt(req.params.userId, 10);
+    const data = await adminModel.getMessages(adminId, otherId);
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("Get messages error:", error);
+    res.status(500).json({ success: false, message: "Failed to load messages" });
+  }
+});
+
+router.post("/messages", async (req, res) => {
+  try {
+    const adminId = parseInt((req as any).user?.id || "1", 10);
+    const { recipient_id, recipient_name, text, sender_name } = req.body;
+    if (!recipient_id || !text) return res.status(400).json({ success: false, message: "recipient_id and text required" });
+    const msg = await adminModel.sendMessage({ sender_id: adminId, recipient_id, sender_name: sender_name || "Admin", recipient_name: recipient_name || "", text });
+    res.status(201).json({ success: true, data: msg });
+  } catch (error) {
+    console.error("Send message error:", error);
+    res.status(500).json({ success: false, message: "Failed to send message" });
+  }
+});
+
 export default router;

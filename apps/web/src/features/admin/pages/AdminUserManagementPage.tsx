@@ -1,11 +1,12 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Search, Plus, MoreHorizontal, X, Shield, ChevronLeft, ChevronRight, Edit2, Trash2,
   CheckCircle2, Ban, Pause, Eye, AlertTriangle, Check, Mail, Calendar, Clock,
-  UserCog, Users as UsersIcon, GraduationCap, User as UserIcon, UserPlus,
+  UserCog, Users as UsersIcon, GraduationCap, User as UserIcon, UserPlus, Loader2,
 } from "lucide-react";
 import { AdminSidebar } from "../components/AdminSidebar";
 import { AdminTopbar } from "../components/AdminTopbar";
+import { api } from "../../../services/api";
 
 type Role = "Admin" | "Teacher" | "Student" | "Parent";
 type UserStatus = "Active" | "Inactive" | "Suspended" | "Pending";
@@ -54,7 +55,8 @@ const MOCK_USERS: SystemUser[] = [
 const PAGE_SIZE = 7;
 
 export default function AdminUserManagementPage() {
-  const [users, setUsers] = useState<SystemUser[]>(MOCK_USERS);
+  const [users, setUsers] = useState<SystemUser[]>([]);
+  const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<"All" | Role>("All");
   const [statusFilter, setStatusFilter] = useState<"All" | UserStatus>("All");
@@ -68,6 +70,36 @@ export default function AdminUserManagementPage() {
 
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(null), 2400); }
 
+  useEffect(() => { loadUsers(); }, []);
+
+  async function loadUsers() {
+    try {
+      setLoading(true);
+      const res = await api.getAdminUsers({ limit: 200 });
+      if (res.success && res.data?.users) {
+        const mapped: SystemUser[] = res.data.users.map((u: any) => ({
+          id: String(u.id),
+          name: u.name || u.full_name || "Unknown",
+          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.name || u.id}`,
+          email: u.email || "",
+          phone: u.phone || "—",
+          role: capitalize(u.role) as Role,
+          lastLogin: u.last_login ? new Date(u.last_login).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Never",
+          status: u.is_active === false ? "Inactive" : "Active",
+          joined: new Date(u.created_at || Date.now()).toLocaleDateString("en-US", { month: "short", year: "numeric" }),
+        }));
+        setUsers(mapped);
+      }
+    } catch (err) {
+      console.error("Failed to load users:", err);
+      setUsers(MOCK_USERS);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function capitalize(s: string) { return s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : s; }
+
   const filtered = useMemo(() => users.filter(u => {
     const q = search.toLowerCase();
     if (q && !u.name.toLowerCase().includes(q) && !u.email.toLowerCase().includes(q)) return false;
@@ -79,18 +111,64 @@ export default function AdminUserManagementPage() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  function changeStatus(id: string, status: UserStatus) {
-    setUsers(us => us.map(u => u.id === id ? { ...u, status } : u));
-    if (viewUser?.id === id) setViewUser(v => v ? { ...v, status } : v);
-    showToast(`User marked as ${status}`);
+  async function changeStatus(id: string, status: UserStatus) {
+    const isActive = status === "Active";
+    try {
+      await api.updateAdminUser(id, { is_active: isActive });
+      setUsers(us => us.map(u => u.id === id ? { ...u, status } : u));
+      if (viewUser?.id === id) setViewUser(v => v ? { ...v, status } : v);
+      showToast(`User marked as ${status}`);
+    } catch (err) {
+      showToast("Failed to update status");
+    }
   }
-  function addUser(u: SystemUser) { setUsers(us => [u, ...us]); setShowAdd(false); showToast(`Invitation sent to ${u.email}`); }
-  function updateUser(u: SystemUser) { setUsers(us => us.map(x => x.id === u.id ? u : x)); setEditUser(null); setViewUser(u); showToast("User updated"); }
-  function removeUser() {
+  async function addUser(u: SystemUser) {
+    try {
+      const res = await api.createAdminUser({
+        name: u.name,
+        email: u.email,
+        password: "TempPass123!",
+        role: u.role.toLowerCase(),
+      });
+      const created: SystemUser = {
+        ...u,
+        id: String(res.data?.id || Date.now()),
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.name}`,
+      };
+      setUsers(us => [created, ...us]);
+      setShowAdd(false);
+      showToast(`User ${u.email} created`);
+    } catch (err: any) {
+      showToast(err.message || "Failed to create user");
+    }
+  }
+  async function updateUser(u: SystemUser) {
+    try {
+      await api.updateAdminUser(u.id, {
+        name: u.name,
+        email: u.email,
+        phone: u.phone,
+        role: u.role.toLowerCase(),
+        is_active: u.status === "Active",
+      });
+      setUsers(us => us.map(x => x.id === u.id ? u : x));
+      setEditUser(null);
+      setViewUser(u);
+      showToast("User updated");
+    } catch (err: any) {
+      showToast(err.message || "Failed to update user");
+    }
+  }
+  async function removeUser() {
     if (!deleteUser) return;
-    setUsers(us => us.filter(u => u.id !== deleteUser.id));
-    showToast(`${deleteUser.name} removed`);
-    setDeleteUser(null); setViewUser(null);
+    try {
+      await api.deleteAdminUser(deleteUser.id);
+      setUsers(us => us.filter(u => u.id !== deleteUser.id));
+      showToast(`${deleteUser.name} removed`);
+      setDeleteUser(null); setViewUser(null);
+    } catch (err: any) {
+      showToast(err.message || "Failed to delete user");
+    }
   }
 
   const stats = {
@@ -114,6 +192,9 @@ export default function AdminUserManagementPage() {
         <AdminTopbar />
         <main className="mx-auto w-full max-w-[1280px] flex-1 px-6 pb-12 pt-6">
 
+          {loading && (
+            <div className="mb-4 flex items-center gap-2 text-sm text-ink-400"><Loader2 className="size-4 animate-spin" />Loading users…</div>
+          )}
           <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between animate-fade-in-up">
             <div>
               <h1 className="text-2xl font-bold text-ink-900">User Management</h1>
