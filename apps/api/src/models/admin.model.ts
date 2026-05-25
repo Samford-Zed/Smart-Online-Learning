@@ -907,7 +907,7 @@ export async function getAttendanceStudents(filters?: { grade?: string; search?:
       SELECT
         u.id, u.full_name AS name, u.email,
         u.grade_level,
-        u.phone,
+        COALESCE(sp.student_info->>'phone', '') AS phone,
         COUNT(a.id) FILTER (WHERE a.status = 'Present') AS present_days,
         COUNT(a.id) FILTER (WHERE a.status = 'Absent')  AS absent_days,
         COUNT(a.id) FILTER (WHERE a.status = 'Late')    AS late_days,
@@ -923,7 +923,7 @@ export async function getAttendanceStudents(filters?: { grade?: string; search?:
     let i = 1;
     if (filters?.grade && filters.grade !== 'All') { sql += ` AND u.grade_level = $${i++}`; params.push(parseInt(filters.grade.replace('Grade ', ''))); }
     if (filters?.search) { sql += ` AND (u.full_name ILIKE $${i} OR u.email ILIKE $${i})`; params.push(`%${filters.search}%`); i++; }
-    sql += ` GROUP BY u.id, u.full_name, u.email, u.grade_level, sp.phone ORDER BY u.full_name`;
+    sql += ` GROUP BY u.id, u.full_name, u.email, u.grade_level, sp.student_info ORDER BY u.full_name`;
     const res = await query(sql, params);
     return res.rows;
   } catch (error) {
@@ -1144,9 +1144,11 @@ export async function ensureTasksTable(): Promise<void> {
       status VARCHAR(50) DEFAULT 'To Do',
       tag VARCHAR(100) DEFAULT 'Administrative',
       checklist JSONB DEFAULT '[]',
-      created_at TIMESTAMPTZ DEFAULT NOW()
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+  await query(`ALTER TABLE admin_tasks ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`);
 }
 
 export async function getAllTasks(filters?: { status?: string; priority?: string; search?: string }): Promise<any[]> {
@@ -1157,8 +1159,8 @@ export async function getAllTasks(filters?: { status?: string; priority?: string
     let i = 1;
     if (filters?.status && filters.status !== 'All') { sql += ` AND status = $${i++}`; params.push(filters.status); }
     if (filters?.priority && filters.priority !== 'All') { sql += ` AND priority = $${i++}`; params.push(filters.priority); }
-    if (filters?.search) { sql += ` AND (title ILIKE $${i} OR description ILIKE $${i})`; params.push(`%${filters.search}%`); i++; }
-    sql += ` ORDER BY CASE priority WHEN 'High' THEN 1 WHEN 'Medium' THEN 2 ELSE 3 END, due ASC NULLS LAST`;
+    if (filters?.search) { sql += ` AND (title ILIKE $${i} OR description ILIKE $${i} OR assignee ILIKE $${i})`; params.push(`%${filters.search}%`); i++; }
+    sql += ` ORDER BY created_at DESC`;
     const res = await query(sql, params);
     return res.rows;
   } catch (error) {
@@ -1192,9 +1194,10 @@ export async function updateTask(id: number, data: any): Promise<any> {
     }
   }
   if (!updates.length) return null;
+  updates.push(`updated_at = NOW()`);
   values.push(id);
   const res = await query(`UPDATE admin_tasks SET ${updates.join(', ')} WHERE id = $${i} RETURNING *`, values);
-  return res.rows[0];
+  return res.rows[0] ?? null;
 }
 
 export async function deleteTask(id: number): Promise<boolean> {

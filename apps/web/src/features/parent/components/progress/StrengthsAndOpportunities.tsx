@@ -1,9 +1,20 @@
 import { CheckCircle2, ChevronRight, Flag, Lightbulb, Star } from "lucide-react";
+import { useEffect, useState } from "react";
+import { api } from "../../../../services/api";
 import { useT } from "../../../../i18n/I18nProvider";
-import { opportunities, strengths } from "../../data/progress";
 
 export function StrengthsAndOpportunities() {
   const t = useT();
+  const [strengths, setStrengths] = useState<string[]>([]);
+  const [opportunities, setOpportunities] = useState<string[]>([]);
+
+  useEffect(() => {
+    api.getParentStudentReport().then((data: any) => {
+      setStrengths(data?.strengths || data?.areasOfStrength || []);
+      setOpportunities(data?.opportunities || data?.growthAreas || []);
+    }).catch(() => {});
+  }, []);
+
   return (
     <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-50/60 via-white to-indigo-50/40 p-6 ring-1 ring-indigo-100">
       {/* Decorative gear */}

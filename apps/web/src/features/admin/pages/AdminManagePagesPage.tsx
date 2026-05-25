@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Eye, EyeOff, Edit2, ToggleLeft, ToggleRight, Globe, Lock, LayoutGrid, FolderOpen } from "lucide-react";
 import { AdminSidebar } from "../components/AdminSidebar";
 import { AdminTopbar } from "../components/AdminTopbar";
 import { Link } from "react-router-dom";
+import { api } from "../../../services/api";
 
 type PageVisibility = "Public" | "Private" | "Role-Based";
 
@@ -54,6 +55,19 @@ export default function AdminManagePagesPage() {
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<ManagedPage | null>(null);
 
+  useEffect(() => {
+    api.getAdminPageSettings().then(res => {
+      if (res.success && res.data.length > 0) {
+        const dbMap: Record<string, any> = {};
+        res.data.forEach((s: any) => { dbMap[s.route] = s; });
+        setPages(ps => ps.map(p => dbMap[p.route]
+          ? { ...p, visible: dbMap[p.route].visible, visibility: dbMap[p.route].visibility as PageVisibility, description: dbMap[p.route].description || p.description }
+          : p
+        ));
+      }
+    }).catch(() => {});
+  }, []);
+
   const filtered = pages.filter(p => {
     const matchSection = section === "All" || p.section === section;
     const matchSearch = p.name.toLowerCase().includes(search.toLowerCase()) || p.route.toLowerCase().includes(search.toLowerCase());
@@ -61,11 +75,17 @@ export default function AdminManagePagesPage() {
   });
 
   function toggleVisible(id: string) {
-    setPages(ps => ps.map(p => p.id === id ? { ...p, visible: !p.visible } : p));
+    setPages(ps => {
+      const updated = ps.map(p => p.id === id ? { ...p, visible: !p.visible } : p);
+      const page = updated.find(p => p.id === id);
+      if (page) api.updateAdminPageSetting(page.route, { visible: page.visible }).catch(() => {});
+      return updated;
+    });
   }
 
   function saveEdit(updated: ManagedPage) {
     setPages(ps => ps.map(p => p.id === updated.id ? updated : p));
+    api.updateAdminPageSetting(updated.route, { visible: updated.visible, visibility: updated.visibility, description: updated.description }).catch(() => {});
     setEditing(null);
   }
 

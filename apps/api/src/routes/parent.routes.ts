@@ -22,6 +22,9 @@ router.get('/student/progress', ParentController.getStudentProgress);
 router.get('/student/report', ParentController.getReport);
 router.get('/student/activities', ParentController.getActivities);
 
+// Link student
+router.post('/link-student', ParentController.linkStudent);
+
 // Notifications
 router.get('/notifications', ParentController.getNotifications);
 router.patch('/notifications/:id', ParentController.markNotificationRead);

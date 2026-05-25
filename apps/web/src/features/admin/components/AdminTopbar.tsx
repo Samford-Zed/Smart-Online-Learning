@@ -8,12 +8,6 @@ import {
 } from "../../student/settings/preferencesStore";
 import { api } from "../../../services/api";
 
-const NOTIFICATIONS = [
-  { id: "n1", text: "New student registered: Amara Osei",        time: "2 min ago",  unread: true },
-  { id: "n2", text: "Exam results uploaded for Biology 101",     time: "1 hour ago", unread: true },
-  { id: "n3", text: "Parent message from Margaret Harper",       time: "3 hours ago",unread: false },
-  { id: "n4", text: "New teacher application received",          time: "Yesterday",  unread: false },
-];
 
 export function AdminTopbar() {
   const [query, setQuery] = useState("");
@@ -22,30 +16,45 @@ export function AdminTopbar() {
   const [showLang, setShowLang] = useState(false);
   const { locale, setLocale, t } = useT();
   const activeLang = LOCALES.find(l => l.code === locale) ?? LOCALES[0];
-  const [notifs, setNotifs] = useState(NOTIFICATIONS);
+  const [notifs, setNotifs] = useState<{ id: string; text: string; time: string; unread: boolean }[]>([]);
   const notifsRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const langRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
-  // Real user data
   const [user, setUser] = useState<{ id: number; fullName: string; email: string; role: string } | null>(null);
+  const [avatarSrc, setAvatarSrc] = useState<string>("");
 
-  // Load current user on mount
   useEffect(() => {
-    api.getMe().then((u) => setUser(u)).catch(() => {
-      // Fallback: try to get from localStorage
+    api.getMe().then((u) => {
+      setUser(u);
+      const saved = localStorage.getItem(`admin_avatar_${u.id || u.email}`);
+      setAvatarSrc(saved || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.fullName || u.email}`);
+    }).catch(() => {
       const stored = localStorage.getItem("user");
-      if (stored) {
-        try { setUser(JSON.parse(stored)); } catch {}
-      }
+      if (stored) { try { setUser(JSON.parse(stored)); } catch {} }
     });
+
+    // Fetch real notifications from recent announcements
+    api.getAdminAnnouncements({ status: "Published" }).then(res => {
+      if (res.success && res.data?.length) {
+        const items = res.data.slice(0, 6).map((a: any) => ({
+          id: String(a.id),
+          text: a.title,
+          time: a.created_at
+            ? new Date(a.created_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+            : "",
+          unread: true,
+        }));
+        setNotifs(items);
+      }
+    }).catch(() => {});
   }, []);
 
-  const userName = user?.fullName || user?.email?.split('@')[0] || "Admin";
+  const userName = user?.fullName || (user as any)?.full_name || user?.email?.split('@')[0] || "Admin";
   const userEmail = user?.email || "admin@school.edu";
   const userRole = user?.role || "Admin";
-  const userAvatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${userName}`;
+  const userAvatarIsReal = avatarSrc.startsWith("data:");
 
   const unreadCount = notifs.filter(n => n.unread).length;
 
@@ -83,15 +92,6 @@ export function AdminTopbar() {
       </label>
 
       <div className="ml-auto flex items-center gap-1.5">
-
-        {/* Settings icon */}
-        <Link
-          to="/admin/account"
-          aria-label="Settings"
-          className="flex size-9 items-center justify-center rounded-full text-ink-600 transition hover:bg-ink-100"
-        >
-          <Settings className="size-5" />
-        </Link>
 
         {/* Notifications */}
         <div className="relative" ref={notifsRef}>
@@ -191,11 +191,10 @@ export function AdminTopbar() {
             onClick={() => { setShowProfile(o => !o); setShowNotifs(false); }}
             className="flex items-center gap-2.5 rounded-full border border-ink-200 bg-white py-1 pl-1 pr-3 transition hover:bg-ink-50"
           >
-            <img
-              src={userAvatar}
-              alt="Admin avatar"
-              className="size-8 rounded-full bg-surface-100 object-cover"
-            />
+            {userAvatarIsReal
+              ? <img src={avatarSrc} alt="Admin avatar" className="size-8 rounded-full bg-surface-100 object-cover" />
+              : <span className="flex size-8 items-center justify-center rounded-full bg-violet-100"><UserCircle className="size-6 text-violet-500" /></span>
+            }
             <div className="text-left leading-tight">
               <p className="text-xs font-semibold text-ink-900">{userName}</p>
               <p className="text-[10px] text-ink-500 capitalize">{userRole}</p>
@@ -207,7 +206,10 @@ export function AdminTopbar() {
             <div className="absolute right-0 top-12 z-30 w-56 rounded-2xl border border-ink-200 bg-white shadow-xl animate-scale-in">
               {/* Profile header */}
               <div className="flex items-center gap-3 border-b border-ink-100 px-4 py-3.5">
-                <img src={userAvatar} alt="" className="size-10 rounded-full bg-surface-100 object-cover ring-2 ring-violet-100" />
+                {userAvatarIsReal
+                  ? <img src={avatarSrc} alt="" className="size-10 rounded-full bg-surface-100 object-cover ring-2 ring-violet-100" />
+                  : <span className="flex size-10 items-center justify-center rounded-full bg-violet-100 ring-2 ring-violet-100"><UserCircle className="size-7 text-violet-500" /></span>
+                }
                 <div>
                   <p className="text-sm font-bold text-ink-900">{userName}</p>
                   <p className="text-xs text-ink-500">{userEmail}</p>

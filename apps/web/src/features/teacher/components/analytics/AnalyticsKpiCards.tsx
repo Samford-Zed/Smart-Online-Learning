@@ -6,11 +6,26 @@ import {
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useT } from "../../../../i18n/I18nProvider";
-import { analyticsKpis } from "../../data/analytics";
+import { getTeacherDashboard } from "../../services/teacher.api";
 
 export function AnalyticsKpiCards() {
   const t = useT();
+  const [kpis, setKpis] = useState({ avgGrade: 0, attendance: 0, completion: 0 });
+
+  useEffect(() => {
+    getTeacherDashboard().then((data: any) => {
+      const students: any[] = data?.students || [];
+      const avgGrade = students.length
+        ? Math.round(students.reduce((a: number, s: any) => a + Number(s.grade || s.overall_grade || 0), 0) / students.length)
+        : 0;
+      const attendance = data?.stats?.attendanceRate ?? 0;
+      const completion = data?.stats?.completionRate ?? 0;
+      setKpis({ avgGrade, attendance, completion });
+    }).catch(() => {});
+  }, []);
+
   return (
     <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
       <Card
@@ -18,24 +33,24 @@ export function AnalyticsKpiCards() {
         iconBg="bg-indigo-100"
         iconColor="text-indigo-600"
         label={t("Average Class Grade")}
-        value={`${analyticsKpis.avgGrade}%`}
-        delta={analyticsKpis.avgGradeDelta}
+        value={`${kpis.avgGrade}%`}
+        delta={0}
       />
       <Card
         icon={CalendarCheck}
         iconBg="bg-emerald-100"
         iconColor="text-emerald-600"
         label={t("Attendance Rate")}
-        value={`${analyticsKpis.attendance}%`}
-        delta={analyticsKpis.attendanceDelta}
+        value={`${kpis.attendance}%`}
+        delta={0}
       />
       <Card
         icon={CheckCircle2}
         iconBg="bg-amber-100"
         iconColor="text-amber-600"
         label={t("Completion Rate")}
-        value={`${analyticsKpis.completion}%`}
-        delta={analyticsKpis.completionDelta}
+        value={`${kpis.completion}%`}
+        delta={0}
       />
     </div>
   );

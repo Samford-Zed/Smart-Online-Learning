@@ -1,14 +1,13 @@
 import {
   BellOff,
-  CalendarClock,
   CheckCheck,
   ClipboardList,
   FileCheck2,
   MessageSquare,
-  UserPlus,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useT } from "../../../i18n/I18nProvider";
+import { getTeacherDashboard } from "../services/teacher.api";
 
 export type TeacherNotification = {
   id: string;
@@ -21,58 +20,15 @@ export type TeacherNotification = {
   iconColor: string;
 };
 
-const seed: TeacherNotification[] = [
-  {
-    id: "tn1",
-    title: "12 New Assignment Submissions",
-    body: "Grade 10 - Algebra II homework is ready for review.",
-    time: "5 min ago",
-    read: false,
-    icon: ClipboardList,
-    iconBg: "bg-indigo-50",
-    iconColor: "text-indigo-600",
-  },
-  {
-    id: "tn2",
-    title: "Message from Mr. Johnson",
-    body: '"Could we reschedule Alex\'s parent meeting to Thursday?"',
-    time: "32 min ago",
-    read: false,
-    icon: MessageSquare,
-    iconBg: "bg-emerald-50",
-    iconColor: "text-emerald-600",
-  },
-  {
-    id: "tn3",
-    title: "Quiz Auto-Graded",
-    body: "Physics Chapter 4 quiz: 28 of 30 students completed.",
-    time: "2 hrs ago",
-    read: false,
-    icon: FileCheck2,
-    iconBg: "bg-amber-50",
-    iconColor: "text-amber-600",
-  },
-  {
-    id: "tn4",
-    title: "New Student Enrolled",
-    body: "Mariam Bekele has joined Grade 9 - Biology.",
-    time: "Yesterday",
-    read: true,
-    icon: UserPlus,
-    iconBg: "bg-purple-50",
-    iconColor: "text-purple-600",
-  },
-  {
-    id: "tn5",
-    title: "Staff Meeting Reminder",
-    body: "Curriculum review on Friday at 3:00 PM in Room 204.",
-    time: "2 days ago",
-    read: true,
-    icon: CalendarClock,
-    iconBg: "bg-rose-50",
-    iconColor: "text-rose-600",
-  },
-];
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} hr ago`;
+  return `${Math.floor(hrs / 24)} day(s) ago`;
+}
 
 type Props = {
   triggerRef: React.RefObject<HTMLButtonElement | null>;
@@ -82,7 +38,52 @@ type Props = {
 export function NotificationsPanel({ triggerRef, onClose }: Props) {
   const t = useT();
   const panelRef = useRef<HTMLDivElement | null>(null);
-  const [items, setItems] = useState<TeacherNotification[]>(seed);
+  const [items, setItems] = useState<TeacherNotification[]>([]);
+
+  useEffect(() => {
+    getTeacherDashboard().then((data: any) => {
+      const notifs: TeacherNotification[] = [];
+      (data?.pendingFeedback || []).forEach((f: any, i: number) => {
+        notifs.push({
+          id: `pf-${f.id ?? i}`,
+          title: `Pending Submission: ${f.assignmentTitle || "Assignment"}`,
+          body: `${f.studentName || "A student"} submitted work awaiting your review.`,
+          time: f.submittedAt ? timeAgo(f.submittedAt) : "Recently",
+          read: false,
+          icon: ClipboardList,
+          iconBg: "bg-indigo-50",
+          iconColor: "text-indigo-600",
+        });
+      });
+      if (data?.stats?.pendingGrades > 0) {
+        notifs.push({
+          id: "pending-grades",
+          title: `${data.stats.pendingGrades} Grade(s) Pending`,
+          body: "You have submissions that need grading.",
+          time: "Now",
+          read: false,
+          icon: FileCheck2,
+          iconBg: "bg-amber-50",
+          iconColor: "text-amber-600",
+        });
+      }
+      (data?.classes || []).forEach((c: any, i: number) => {
+        if (Number(c.studentCount) > 0) {
+          notifs.push({
+            id: `class-${c.id ?? i}`,
+            title: c.name || "Active Class",
+            body: `${c.studentCount} student(s) enrolled.`,
+            time: "Active",
+            read: true,
+            icon: MessageSquare,
+            iconBg: "bg-emerald-50",
+            iconColor: "text-emerald-600",
+          });
+        }
+      });
+      setItems(notifs.length ? notifs : []);
+    }).catch(() => setItems([]));
+  }, []);
   const [tab, setTab] = useState<"all" | "unread">("all");
 
   useEffect(() => {

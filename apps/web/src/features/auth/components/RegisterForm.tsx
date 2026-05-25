@@ -24,8 +24,9 @@ import {
 import { api } from "../../../services/api";
 
 const ROLE_OPTIONS = [
-  { value: "teacher", label: "Teacher", icon: BookOpen,       color: "text-emerald-600",   bg: "bg-emerald-50",      border: "border-emerald-500"   },
-  { value: "parent",  label: "Parent",  icon: Users,          color: "text-violet-600",    bg: "bg-violet-50",       border: "border-violet-500"    },
+  { value: "teacher", label: "Teacher", icon: BookOpen, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-500" },
+  { value: "parent",  label: "Parent",  icon: Users,    color: "text-violet-600",  bg: "bg-violet-50",  border: "border-violet-500" },
+  { value: "student", label: "Student", icon: GraduationCap, color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-500" },
 ];
 
 export function RegisterForm() {
@@ -57,6 +58,7 @@ export function RegisterForm() {
         password: values.password,
         role: values.role,
         gradeLevel: values.role === "student" ? values.gradeLevel : undefined,
+        studentEmail: values.role === "parent" ? values.studentEmail : undefined,
       });
 
       // Store user info in localStorage for now (can be replaced with state management)
@@ -211,6 +213,24 @@ export function RegisterForm() {
               </select>
             </div>
             {errors.gradeLevel && <span className="text-xs text-red-600">{errors.gradeLevel.message}</span>}
+          </div>
+        )}
+
+        {/* Student Email - only for parents */}
+        {selectedRole === "parent" && (
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="studentEmail" className="text-xs font-semibold text-ink-700">Child's School Email</label>
+            <div className="relative">
+              <Mail className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-ink-400" aria-hidden />
+              <input
+                id="studentEmail" type="email" autoComplete="email" placeholder="child@school.edu"
+                {...register("studentEmail")}
+                className="h-12 w-full rounded-xl border border-ink-200 bg-white pl-10 pr-4 text-sm text-ink-900 placeholder:text-ink-400 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
+                aria-invalid={!!errors.studentEmail}
+              />
+            </div>
+            {errors.studentEmail && <span className="text-xs text-red-600">{errors.studentEmail.message}</span>}
+            <p className="text-xs text-ink-500">Enter your child's registered school email to automatically link accounts.</p>
           </div>
         )}
 

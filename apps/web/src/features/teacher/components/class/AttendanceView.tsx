@@ -1,6 +1,6 @@
 import { CheckCircle2, Clock, XCircle } from "lucide-react";
 import { useT } from "../../../../i18n/I18nProvider";
-import { students, type AttendanceStatus } from "../../data/classManagement";
+import { type AttendanceStatus, type Student } from "../../data/classManagement";
 
 const options: {
   value: AttendanceStatus;
@@ -36,9 +36,10 @@ type Props = {
   attendance: Record<string, AttendanceStatus>;
   onChange: (studentId: string, status: AttendanceStatus) => void;
   onMarkAll?: (status: AttendanceStatus) => void;
+  students?: Student[];
 };
 
-export function AttendanceView({ attendance, onChange, onMarkAll }: Props) {
+export function AttendanceView({ attendance, onChange, onMarkAll, students = [] }: Props) {
   const t = useT();
   const counts = students.reduce(
     (acc, s) => {
@@ -86,7 +87,7 @@ export function AttendanceView({ attendance, onChange, onMarkAll }: Props) {
       </div>
 
       <ul className="divide-y divide-slate-100">
-        {students.map((s) => {
+        {students.map((s: Student) => {
           const current = attendance[s.id] ?? s.status;
           return (
             <li

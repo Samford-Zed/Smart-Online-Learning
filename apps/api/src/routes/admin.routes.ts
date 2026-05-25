@@ -939,4 +939,42 @@ router.post("/messages", async (req, res) => {
   }
 });
 
+// ============================================
+// PAGE SETTINGS
+// ============================================
+
+router.get("/page-settings", async (req, res) => {
+  try {
+    const data = await adminModel.getAllPageSettings();
+    res.json({ success: true, data });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to load page settings" });
+  }
+});
+
+router.put("/page-settings", async (req, res) => {
+  try {
+    const { route, visible, visibility, description } = req.body;
+    if (!route) return res.status(400).json({ success: false, message: "route is required" });
+    const data = await adminModel.upsertPageSetting(route, { visible, visibility, description });
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("Update page setting error:", error);
+    res.status(500).json({ success: false, message: "Failed to update page setting" });
+  }
+});
+
+// ============================================
+// ANALYTICS - User/platform stats
+// ============================================
+
+router.get("/analytics/platform-stats", async (req, res) => {
+  try {
+    const stats = await adminModel.getDashboardStats();
+    res.json({ success: true, data: stats });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to load platform stats" });
+  }
+});
+
 export default router;

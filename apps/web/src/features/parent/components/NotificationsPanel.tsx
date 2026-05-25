@@ -1,13 +1,6 @@
-import {
-  BellOff,
-  BookOpen,
-  CalendarClock,
-  CheckCheck,
-  FlaskConical,
-  GraduationCap,
-  MessageSquare,
-} from "lucide-react";
+import { BellOff, BookOpen, CheckCheck, GraduationCap, MessageSquare } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { api } from "../../../services/api";
 import { useT } from "../../../i18n/I18nProvider";
 
 export type Notification = {
@@ -21,58 +14,20 @@ export type Notification = {
   iconColor: string;
 };
 
-const seed: Notification[] = [
-  {
-    id: "n1",
-    title: "Math Quiz Graded",
-    body: "Alex scored 92% on the Calculus Intro quiz.",
-    time: "10 min ago",
-    read: false,
-    icon: GraduationCap,
-    iconBg: "bg-emerald-50",
-    iconColor: "text-emerald-600",
-  },
-  {
-    id: "n2",
-    title: "New Message from Ms. Tadesse",
-    body: "\"Alex's lab report shows great improvement this week.\"",
-    time: "1 hr ago",
-    read: false,
-    icon: MessageSquare,
-    iconBg: "bg-indigo-50",
-    iconColor: "text-indigo-600",
-  },
-  {
-    id: "n3",
-    title: "Physics Lab Report Pending",
-    body: "Submission deadline is Friday at 5:00 PM.",
-    time: "3 hrs ago",
-    read: false,
-    icon: FlaskConical,
-    iconBg: "bg-amber-50",
-    iconColor: "text-amber-600",
-  },
-  {
-    id: "n4",
-    title: "Parent-Teacher Conference",
-    body: "Scheduled for Oct 28 at 4:30 PM with Mr. Bekele.",
-    time: "Yesterday",
-    read: true,
-    icon: CalendarClock,
-    iconBg: "bg-purple-50",
-    iconColor: "text-purple-600",
-  },
-  {
-    id: "n5",
-    title: "Literature Essay Submitted",
-    body: "\"The Impact of Modernism on 20th Century Poetry\" submitted.",
-    time: "2 days ago",
-    read: true,
-    icon: BookOpen,
-    iconBg: "bg-rose-50",
-    iconColor: "text-rose-600",
-  },
-];
+const ICONS = [GraduationCap, MessageSquare, BookOpen];
+const BGS = ["bg-emerald-50", "bg-indigo-50", "bg-purple-50", "bg-amber-50"];
+const COLORS = ["text-emerald-600", "text-indigo-600", "text-purple-600", "text-amber-600"];
+
+function timeAgo(d: string) {
+  if (!d) return "";
+  const diff = Date.now() - new Date(d).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "Just now";
+  if (m < 60) return `${m} min ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} hr ago`;
+  return `${Math.floor(h / 24)} day(s) ago`;
+}
 
 type Props = {
   triggerRef: React.RefObject<HTMLButtonElement | null>;
@@ -82,8 +37,24 @@ type Props = {
 export function NotificationsPanel({ triggerRef, onClose }: Props) {
   const t = useT();
   const panelRef = useRef<HTMLDivElement | null>(null);
-  const [items, setItems] = useState<Notification[]>(seed);
+  const [items, setItems] = useState<Notification[]>([]);
   const [tab, setTab] = useState<"all" | "unread">("all");
+
+  useEffect(() => {
+    api.getParentNotifications().then((raw: any[]) => {
+      const mapped: Notification[] = (raw || []).map((n: any, i: number) => ({
+        id: String(n.id ?? i),
+        title: n.title || n.message || "Notification",
+        body: n.body || n.description || "",
+        time: n.created_at ? timeAgo(n.created_at) : n.time || "",
+        read: !!(n.is_read || n.read),
+        icon: ICONS[i % ICONS.length],
+        iconBg: BGS[i % BGS.length],
+        iconColor: COLORS[i % COLORS.length],
+      }));
+      setItems(mapped);
+    }).catch(() => {});
+  }, []);
 
   // Click-outside + Esc to close
   useEffect(() => {
@@ -115,8 +86,11 @@ export function NotificationsPanel({ triggerRef, onClose }: Props) {
   const markAllRead = () =>
     setItems((arr) => arr.map((n) => ({ ...n, read: true })));
 
-  const markRead = (id: string) =>
+  const markRead = (id: string) => {
     setItems((arr) => arr.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    const numId = parseInt(id, 10);
+    if (!isNaN(numId)) api.markParentNotificationRead(numId).catch(() => {});
+  };
 
   const clearAll = () => setItems([]);
 

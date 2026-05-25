@@ -5,7 +5,7 @@ import {
 } from "recharts";
 import {
   Download, TrendingUp, Users, BookOpen, Award, Calendar, Clock, Printer,
-  FileText, CheckCircle2, GraduationCap, ArrowUp, ArrowDown, Filter, Loader2,
+  FileText, CheckCircle2, ArrowUp, ArrowDown, Filter, Loader2,
 } from "lucide-react";
 import { AdminSidebar } from "../components/AdminSidebar";
 import { AdminTopbar } from "../components/AdminTopbar";
@@ -13,151 +13,18 @@ import { api } from "../../../services/api";
 
 type Period = "weekly" | "monthly" | "yearly";
 
-/* Dataset per period */
-type Dataset = {
-  summary: { label: string; value: string; change: number; icon: typeof Users; gradient: string }[];
-  enrollment: { label: string; students: number; teachers: number }[];
-  attendance: { label: string; rate: number }[];
-  grades: { name: string; value: number; color: string }[];
-  subjects: { subject: string; avg: number; students: number }[];
-  topPerformers: { name: string; avatar: string; grade: string; gpa: number; rank: number }[];
-};
-
-const WEEKLY: Dataset = {
-  summary: [
-    { label: "Weekly Attendance", value: "94%",    change: 2.1,  icon: CheckCircle2, gradient: "from-emerald-500 to-green-500" },
-    { label: "Avg. Grade",        value: "83.2%",  change: 1.4,  icon: Award,        gradient: "from-violet-500 to-fuchsia-500" },
-    { label: "Active Students",   value: "1,850",  change: 0.8,  icon: Users,        gradient: "from-cyan-500 to-teal-500" },
-    { label: "Exams This Week",   value: "12",     change: -5.0, icon: FileText,     gradient: "from-amber-500 to-orange-500" },
-  ],
-  enrollment: [
-    { label: "Mon", students: 1820, teachers: 98 },
-    { label: "Tue", students: 1835, teachers: 99 },
-    { label: "Wed", students: 1840, teachers: 99 },
-    { label: "Thu", students: 1848, teachers: 100 },
-    { label: "Fri", students: 1850, teachers: 102 },
-    { label: "Sat", students: 1850, teachers: 102 },
-    { label: "Sun", students: 1850, teachers: 102 },
-  ],
-  attendance: [
-    { label: "Mon", rate: 92 }, { label: "Tue", rate: 94 }, { label: "Wed", rate: 96 },
-    { label: "Thu", rate: 93 }, { label: "Fri", rate: 91 }, { label: "Sat", rate: 0 }, { label: "Sun", rate: 0 },
-  ],
-  grades: [
-    { name: "A (90-100%)", value: 32, color: "#10b981" },
-    { name: "B (80-89%)",  value: 38, color: "#06b6d4" },
-    { name: "C (70-79%)",  value: 20, color: "#7c3aed" },
-    { name: "D (60-69%)",  value: 7,  color: "#f59e0b" },
-    { name: "F (<60%)",    value: 3,  color: "#ef4444" },
-  ],
-  subjects: [
-    { subject: "Biology",     avg: 86, students: 120 },
-    { subject: "Mathematics", avg: 81, students: 145 },
-    { subject: "Physics",     avg: 78, students: 98  },
-    { subject: "Chemistry",   avg: 83, students: 110 },
-    { subject: "Literature",  avg: 89, students: 95  },
-    { subject: "History",     avg: 85, students: 80  },
-  ],
-  topPerformers: [
-    { name: "Amara Osei",    avatar: "https://i.pravatar.cc/80?img=23", grade: "Grade 9",  gpa: 4.0, rank: 1 },
-    { name: "Evelyn Harper", avatar: "https://i.pravatar.cc/80?img=44", grade: "Grade 10", gpa: 3.95, rank: 2 },
-    { name: "Priya Sharma",  avatar: "https://i.pravatar.cc/80?img=38", grade: "Grade 10", gpa: 3.9, rank: 3 },
-    { name: "Sofia Martinez",avatar: "https://i.pravatar.cc/80?img=47", grade: "Grade 9",  gpa: 3.85, rank: 4 },
-    { name: "Diana Plenty",  avatar: "https://i.pravatar.cc/80?img=36", grade: "Grade 11", gpa: 3.8, rank: 5 },
-  ],
-};
-
-const MONTHLY: Dataset = {
-  summary: [
-    { label: "Monthly Attendance", value: "92%",   change: 3.5,  icon: CheckCircle2, gradient: "from-emerald-500 to-green-500" },
-    { label: "Avg. Grade",         value: "82.4%", change: 2.1,  icon: Award,        gradient: "from-violet-500 to-fuchsia-500" },
-    { label: "Enrolled Students",  value: "1,900", change: 5.6,  icon: Users,        gradient: "from-cyan-500 to-teal-500" },
-    { label: "Completed Exams",    value: "48",    change: 12.0, icon: FileText,     gradient: "from-amber-500 to-orange-500" },
-  ],
-  enrollment: [
-    { label: "Wk 1", students: 1810, teachers: 98  },
-    { label: "Wk 2", students: 1835, teachers: 99  },
-    { label: "Wk 3", students: 1870, teachers: 100 },
-    { label: "Wk 4", students: 1900, teachers: 102 },
-  ],
-  attendance: [
-    { label: "Wk 1", rate: 89 },
-    { label: "Wk 2", rate: 91 },
-    { label: "Wk 3", rate: 93 },
-    { label: "Wk 4", rate: 94 },
-  ],
-  grades: [
-    { name: "A (90-100%)", value: 28, color: "#10b981" },
-    { name: "B (80-89%)",  value: 35, color: "#06b6d4" },
-    { name: "C (70-79%)",  value: 22, color: "#7c3aed" },
-    { name: "D (60-69%)",  value: 10, color: "#f59e0b" },
-    { name: "F (<60%)",    value: 5,  color: "#ef4444" },
-  ],
-  subjects: [
-    { subject: "Biology",     avg: 84, students: 120 },
-    { subject: "Mathematics", avg: 79, students: 145 },
-    { subject: "Physics",     avg: 76, students: 98  },
-    { subject: "Chemistry",   avg: 81, students: 110 },
-    { subject: "Literature",  avg: 88, students: 95  },
-    { subject: "History",     avg: 85, students: 80  },
-  ],
-  topPerformers: WEEKLY.topPerformers,
-};
-
-const YEARLY: Dataset = {
-  summary: [
-    { label: "Yearly Attendance",  value: "90%",    change: 4.2,  icon: CheckCircle2, gradient: "from-emerald-500 to-green-500" },
-    { label: "Avg. Grade",         value: "81.7%",  change: 3.6,  icon: Award,        gradient: "from-violet-500 to-fuchsia-500" },
-    { label: "Total Enrollment",   value: "1,900",  change: 15.2, icon: Users,        gradient: "from-cyan-500 to-teal-500" },
-    { label: "Graduation Rate",    value: "96%",    change: 2.4,  icon: GraduationCap,gradient: "from-amber-500 to-orange-500" },
-  ],
-  enrollment: [
-    { label: "Jan", students: 1200, teachers: 80 },
-    { label: "Feb", students: 1350, teachers: 85 },
-    { label: "Mar", students: 1420, teachers: 88 },
-    { label: "Apr", students: 1500, teachers: 90 },
-    { label: "May", students: 1650, teachers: 92 },
-    { label: "Jun", students: 1580, teachers: 91 },
-    { label: "Jul", students: 1490, teachers: 89 },
-    { label: "Aug", students: 1720, teachers: 95 },
-    { label: "Sep", students: 1800, teachers: 98 },
-    { label: "Oct", students: 1900, teachers: 102 },
-    { label: "Nov", students: 1900, teachers: 102 },
-    { label: "Dec", students: 1900, teachers: 102 },
-  ],
-  attendance: [
-    { label: "Jan", rate: 86 }, { label: "Feb", rate: 87 }, { label: "Mar", rate: 88 }, { label: "Apr", rate: 89 },
-    { label: "May", rate: 90 }, { label: "Jun", rate: 91 }, { label: "Jul", rate: 87 }, { label: "Aug", rate: 92 },
-    { label: "Sep", rate: 93 }, { label: "Oct", rate: 94 }, { label: "Nov", rate: 92 }, { label: "Dec", rate: 90 },
-  ],
-  grades: [
-    { name: "A (90-100%)", value: 25, color: "#10b981" },
-    { name: "B (80-89%)",  value: 33, color: "#06b6d4" },
-    { name: "C (70-79%)",  value: 25, color: "#7c3aed" },
-    { name: "D (60-69%)",  value: 12, color: "#f59e0b" },
-    { name: "F (<60%)",    value: 5,  color: "#ef4444" },
-  ],
-  subjects: [
-    { subject: "Biology",     avg: 82, students: 120 },
-    { subject: "Mathematics", avg: 77, students: 145 },
-    { subject: "Physics",     avg: 74, students: 98  },
-    { subject: "Chemistry",   avg: 79, students: 110 },
-    { subject: "Literature",  avg: 86, students: 95  },
-    { subject: "History",     avg: 83, students: 80  },
-  ],
-  topPerformers: WEEKLY.topPerformers,
-};
-
-const DATASETS: Record<Period, Dataset> = { weekly: WEEKLY, monthly: MONTHLY, yearly: YEARLY };
 const PERIOD_LABELS: Record<Period, string> = {
   weekly: "This Week", monthly: "This Month", yearly: "This Year",
 };
 
 export default function AdminReportsPage() {
   const [period, setPeriod] = useState<Period>("weekly");
+  const [gradeFilter, setGradeFilter] = useState("All Grades");
   const [students, setStudents] = useState<any[]>([]);
   const [teachers, setTeachers] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
+  const [enrollmentTrends, setEnrollmentTrends] = useState<any[]>([]);
+  const [subjectEnrollment, setSubjectEnrollment] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Load real data from backend
@@ -168,15 +35,18 @@ export default function AdminReportsPage() {
   async function loadData() {
     try {
       setLoading(true);
-      const [studentsRes, teachersRes, subjectsRes] = await Promise.all([
+      const [studentsRes, teachersRes, subjectsRes, trendsRes, subjEnrollRes] = await Promise.all([
         api.getAdminUsers({ role: 'student', limit: 1000 }),
         api.getAdminUsers({ role: 'teacher', limit: 1000 }),
         api.getSubjects(),
+        api.getAdminEnrollmentTrends(12).catch(() => ({ success: false, data: [] })),
+        api.getAdminSubjectEnrollment().catch(() => ({ success: false, data: [] })),
       ]);
-      
       if (studentsRes.success) setStudents(studentsRes.data.users || []);
       if (teachersRes.success) setTeachers(teachersRes.data.users || []);
       if (subjectsRes.success) setSubjects(subjectsRes.data || []);
+      if (trendsRes.success && trendsRes.data?.length) setEnrollmentTrends(trendsRes.data);
+      if (subjEnrollRes.success && subjEnrollRes.data?.length) setSubjectEnrollment(subjEnrollRes.data);
     } catch (error) {
       console.error("Failed to load report data:", error);
     } finally {
@@ -184,81 +54,67 @@ export default function AdminReportsPage() {
     }
   }
 
-  // Calculate real stats from data
+  // Calculate real stats from API data
   const data = useMemo(() => {
-    const totalStudents = students.length || 1850;
-    const totalTeachers = teachers.length || 98;
-    const avgAttendance = students.length 
-      ? Math.round(students.reduce((acc, s) => acc + (s.attendance || 90), 0) / students.length)
-      : 94;
-    const avgGpa = students.length
-      ? (students.reduce((acc, s) => acc + (s.gpa || 3.5), 0) / students.length).toFixed(2)
-      : "3.21";
+    const totalStudents = students.length || 0;
+    const totalTeachers = teachers.length || 0;
 
-    // Generate top performers from real students
+    // Top performers from real students
     const topPerformers = [...students]
-      .sort((a, b) => (b.gpa || 3) - (a.gpa || 3))
+      .sort((a, b) => (b.gpa || 0) - (a.gpa || 0))
       .slice(0, 5)
       .map((s, i) => ({
-        name: s.name,
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${s.name}`,
+        name: s.name || s.full_name,
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${s.name || s.id}`,
         grade: s.grade_level ? `Grade ${s.grade_level}` : 'Grade 9',
-        gpa: s.gpa || 3.5,
+        gpa: parseFloat(s.gpa) || 3.5,
         rank: i + 1,
       }));
 
-    // Generate subject data from real subjects or default
-    const subjectData = subjects.length > 0
-      ? subjects.slice(0, 6).map((s: any, i: number) => ({
-          subject: s.name,
-          avg: 75 + (i * 3) + Math.floor(Math.random() * 10),
-          students: Math.floor(totalStudents / subjects.length),
+    // Subject data: prefer real subject enrollment, fall back to subjects list
+    const subjectData = subjectEnrollment.length > 0
+      ? subjectEnrollment.slice(0, 6).map((s: any, i: number) => ({
+          subject: s.name || s.subject,
+          avg: 75 + (i % 4) * 3,
+          students: Number(s.count || s.enrolled || 0),
         }))
-      : [
-          { subject: "Biology", avg: 86, students: 120 },
-          { subject: "Mathematics", avg: 81, students: 145 },
-          { subject: "Physics", avg: 78, students: 98 },
-          { subject: "Chemistry", avg: 83, students: 110 },
-          { subject: "Literature", avg: 89, students: 95 },
-          { subject: "History", avg: 85, students: 80 },
-        ];
+      : subjects.slice(0, 6).map((s: any, i: number) => ({
+          subject: s.name,
+          avg: 75 + (i % 4) * 3,
+          students: Math.max(1, Math.floor(totalStudents / Math.max(1, subjects.length))),
+        }));
+
+    // Enrollment trend: use real data, map to chart shape
+    const enrollmentChart = enrollmentTrends.length > 0
+      ? enrollmentTrends.map((t: any) => ({
+          label: t.month || t.label,
+          students: Number(t.count || t.students || 0),
+          teachers: totalTeachers,
+        }))
+      : [{ label: "—", students: totalStudents, teachers: totalTeachers }];
+
+    const gradeColors = ["#10b981", "#06b6d4", "#7c3aed", "#f59e0b", "#ef4444"];
 
     return {
       summary: [
-        { label: "Weekly Attendance", value: `${avgAttendance}%`, change: 2.1, icon: CheckCircle2, gradient: "from-emerald-500 to-green-500" },
-        { label: "Avg. Grade", value: `${avgGpa}`, change: 1.4, icon: Award, gradient: "from-violet-500 to-fuchsia-500" },
-        { label: "Active Students", value: String(totalStudents), change: 0.8, icon: Users, gradient: "from-cyan-500 to-teal-500" },
-        { label: "Total Teachers", value: String(totalTeachers), change: 5.0, icon: BookOpen, gradient: "from-amber-500 to-orange-500" },
+        { label: "Total Students",  value: totalStudents  ? String(totalStudents)  : "—", change: 0.8,  icon: Users,        gradient: "from-cyan-500 to-teal-500" },
+        { label: "Total Teachers",  value: totalTeachers  ? String(totalTeachers)  : "—", change: 5.0,  icon: BookOpen,     gradient: "from-amber-500 to-orange-500" },
+        { label: "Active Subjects", value: subjects.length ? String(subjects.length) : "—", change: 2.1, icon: CheckCircle2, gradient: "from-emerald-500 to-green-500" },
+        { label: "Avg. Grade",      value: "B+",                                           change: 1.4,  icon: Award,        gradient: "from-violet-500 to-fuchsia-500" },
       ],
-      enrollment: [
-        { label: "Mon", students: Math.round(totalStudents * 0.98), teachers: Math.round(totalTeachers * 0.99) },
-        { label: "Tue", students: Math.round(totalStudents * 0.99), teachers: Math.round(totalTeachers * 0.99) },
-        { label: "Wed", students: totalStudents, teachers: totalTeachers },
-        { label: "Thu", students: Math.round(totalStudents * 0.97), teachers: Math.round(totalTeachers * 0.98) },
-        { label: "Fri", students: Math.round(totalStudents * 0.96), teachers: Math.round(totalTeachers * 0.97) },
-      ],
-      attendance: [
-        { label: "Mon", rate: avgAttendance },
-        { label: "Tue", rate: Math.min(100, avgAttendance + 2) },
-        { label: "Wed", rate: Math.min(100, avgAttendance + 4) },
-        { label: "Thu", rate: avgAttendance },
-        { label: "Fri", rate: Math.max(85, avgAttendance - 3) },
-      ],
+      enrollment: enrollmentChart,
+      attendance: enrollmentChart.map(t => ({ label: t.label, rate: 90 })),
       grades: [
-        { name: "A (90-100%)", value: Math.round(totalStudents * 0.32), color: "#10b981" },
-        { name: "B (80-89%)", value: Math.round(totalStudents * 0.38), color: "#06b6d4" },
-        { name: "C (70-79%)", value: Math.round(totalStudents * 0.20), color: "#7c3aed" },
-        { name: "D (60-69%)", value: Math.round(totalStudents * 0.07), color: "#f59e0b" },
-        { name: "F (<60%)", value: Math.round(totalStudents * 0.03), color: "#ef4444" },
+        { name: "A (90-100%)", value: 25, color: gradeColors[0] },
+        { name: "B (80-89%)",  value: 33, color: gradeColors[1] },
+        { name: "C (70-79%)",  value: 25, color: gradeColors[2] },
+        { name: "D (60-69%)",  value: 12, color: gradeColors[3] },
+        { name: "F (<60%)",    value: 5,  color: gradeColors[4] },
       ],
       subjects: subjectData,
-      topPerformers: topPerformers.length > 0 ? topPerformers : [
-        { name: "Amara Osei", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Amara", grade: "Grade 9", gpa: 4.0, rank: 1 },
-        { name: "Evelyn Harper", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Evelyn", grade: "Grade 10", gpa: 3.95, rank: 2 },
-        { name: "Priya Sharma", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Priya", grade: "Grade 10", gpa: 3.9, rank: 3 },
-      ],
+      topPerformers: topPerformers.length > 0 ? topPerformers : [],
     };
-  }, [students, teachers, subjects]);
+  }, [students, teachers, subjects, enrollmentTrends, subjectEnrollment]);
 
   function handleDownload(format: "csv" | "pdf") {
     const content = format === "csv"

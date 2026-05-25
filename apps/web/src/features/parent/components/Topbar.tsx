@@ -1,5 +1,6 @@
-import { Bell, ChevronDown, Globe, Settings as SettingsIcon } from "lucide-react";
+import { Bell, ChevronDown, Globe, UserCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { api } from "../../../services/api";
 import { useI18n, useT } from "../../../i18n/I18nProvider";
 import type { Language } from "../../../i18n/translations";
 import type { RouteId } from "../routes";
@@ -14,24 +15,41 @@ export function Topbar({ title, onNavigate }: TopbarProps) {
   const t = useT();
   const [openNotif, setOpenNotif] = useState(false);
   const [hasUnreadNotif, setHasUnreadNotif] = useState(true);
-  const [unreadCount] = useState(1);
+  const [unreadCount, setUnreadCount] = useState(0);
   const bellRef = useRef<HTMLButtonElement | null>(null);
+  const [userName, setUserName] = useState("");
+  const [userAvatar, setUserAvatar] = useState<string | null>(null);
+
+  const syncUser = () => {
+    try {
+      const stored = localStorage.getItem("user");
+      if (stored) {
+        const u = JSON.parse(stored);
+        setUserName(u.fullName || u.full_name || u.name || "");
+        setUserAvatar(u.avatar || null);
+      }
+    } catch {}
+  };
+
+  useEffect(() => {
+    syncUser();
+    window.addEventListener("user-updated", syncUser);
+    return () => window.removeEventListener("user-updated", syncUser);
+  }, []);
+
+  useEffect(() => {
+    api.getParentNotifications().then((notifs: any[]) => {
+      const unread = notifs?.filter((n: any) => !n.read && !n.is_read).length || 0;
+      setUnreadCount(unread);
+      setHasUnreadNotif(unread > 0);
+    }).catch(() => {});
+  }, []);
 
   return (
     <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-slate-200 bg-white/80 px-6 backdrop-blur md:px-10">
       <h1 className="text-base font-semibold text-slate-800">{title}</h1>
 
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Settings */}
-        <button
-          type="button"
-          aria-label={t("nav.settings")}
-          onClick={() => onNavigate?.("settings")}
-          className="rounded-full p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-        >
-          <SettingsIcon className="h-5 w-5" />
-        </button>
-
         {/* Notifications */}
         <div className="relative">
           <button
@@ -69,14 +87,20 @@ export function Topbar({ title, onNavigate }: TopbarProps) {
 
         {/* User Profile */}
         <div className="flex items-center gap-2.5">
-          <img
-            src="https://i.pravatar.cc/64?img=47"
-            alt="Sarah Johnson"
-            className="h-9 w-9 rounded-full object-cover ring-2 ring-white shadow-sm"
-          />
+          {userAvatar ? (
+            <img
+              src={userAvatar}
+              alt={userName || "Profile"}
+              className="h-9 w-9 rounded-full object-cover ring-2 ring-white shadow-sm"
+            />
+          ) : (
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100 ring-2 ring-white shadow-sm">
+              <UserCircle className="h-6 w-6 text-indigo-500" />
+            </span>
+          )}
           <div className="hidden leading-tight sm:block">
             <p className="text-sm font-semibold text-slate-900">
-              Sarah Johnson
+              {userName || t("portal.parent")}
             </p>
             <p className="text-xs text-slate-500">{t("portal.parent")}</p>
           </div>

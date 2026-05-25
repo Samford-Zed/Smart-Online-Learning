@@ -31,7 +31,7 @@ export const feedbackList: FeedbackItem[] = [
   {
     id: "fb1",
     studentName: "Emma Watson",
-    studentAvatar: "https://i.pravatar.cc/64?img=5",
+    studentAvatar: "",
     studentClass: "Grade 10 - Section A",
     course: "Physics 101",
     title: "Question about the Physics assignment",
@@ -42,7 +42,7 @@ export const feedbackList: FeedbackItem[] = [
     thread: [
       {
         authorName: "Emma Watson",
-        authorAvatar: "https://i.pravatar.cc/64?img=5",
+        authorAvatar: "",
         timestamp: "Today, 09:42 AM",
         body: "Hi Mr. Smith,\n\nI was working on the kinematics assignment over the weekend and got stuck on question #4. I was wondering if we need to include the lab safety protocols in the introduction or methodology section of the report?",
       },
@@ -71,7 +71,7 @@ export const feedbackList: FeedbackItem[] = [
   {
     id: "fb3",
     studentName: "Noah Davis",
-    studentAvatar: "https://i.pravatar.cc/64?img=11",
+    studentAvatar: "",
     studentClass: "Grade 9 - Section B",
     course: "History",
     title: "Extension request",
@@ -82,13 +82,13 @@ export const feedbackList: FeedbackItem[] = [
     thread: [
       {
         authorName: "Noah Davis",
-        authorAvatar: "https://i.pravatar.cc/64?img=11",
+        authorAvatar: "",
         timestamp: "Yesterday, 03:24 PM",
         body: "I have been out sick for three days, is it possible to get an extension on the history essay?",
       },
       {
         authorName: "Ms. Sarah",
-        authorAvatar: "https://i.pravatar.cc/64?img=47",
+        authorAvatar: "",
         timestamp: "Yesterday, 04:01 PM",
         body: "Hi Noah, hope you feel better soon. You can submit by Friday \u2014 I've extended the deadline.",
       },

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   Search, Plus, MoreHorizontal, X, Mail, Phone, ChevronLeft, ChevronRight,
-  Eye, Pencil, Trash2, UsersRound, BookOpen, Award, Clock, GraduationCap, Check, AlertTriangle, Loader2,
+  Eye, Pencil, Trash2, UsersRound, BookOpen, Award, Clock, GraduationCap, Check, AlertTriangle, Loader2, UserCircle,
 } from "lucide-react";
 import { AdminSidebar } from "../components/AdminSidebar";
 import { AdminTopbar } from "../components/AdminTopbar";
@@ -15,14 +15,6 @@ type Teacher = {
   classAssignments: string[]; qualification: string; experience: string; joinDate: string;
 };
 
-const INITIAL_TEACHERS: Teacher[] = [
-  { id: "t1", name: "Dr. Alice Monroe",   avatar: "https://i.pravatar.cc/80?img=49", teacherId: "TCH10012", subject: "Biology",     email: "alice@school.edu",   phone: "+1 555-0101", classes: 4, students: 120, status: "Active",   classAssignments: ["10-A","10-B","11-A","12-C"], qualification: "PhD Biology", experience: "12 years", joinDate: "Sep 2012" },
-  { id: "t2", name: "Mr. James Okafor",   avatar: "https://i.pravatar.cc/80?img=11", teacherId: "TCH10023", subject: "Mathematics", email: "james@school.edu",   phone: "+1 555-0102", classes: 5, students: 145, status: "Active",   classAssignments: ["9-A","9-B","10-A","11-B","12-A"], qualification: "MSc Mathematics", experience: "8 years", joinDate: "Jan 2016" },
-  { id: "t3", name: "Ms. Clara Zhang",    avatar: "https://i.pravatar.cc/80?img=45", teacherId: "TCH10031", subject: "Physics",     email: "clara@school.edu",   phone: "+1 555-0103", classes: 3, students: 98,  status: "On Leave", classAssignments: ["11-A","11-B","12-A"], qualification: "MSc Physics", experience: "6 years", joinDate: "Mar 2018" },
-  { id: "t4", name: "Mr. David Mensah",   avatar: "https://i.pravatar.cc/80?img=14", teacherId: "TCH10044", subject: "Chemistry",   email: "david@school.edu",   phone: "+1 555-0104", classes: 4, students: 110, status: "Active",   classAssignments: ["10-A","10-C","11-A","12-B"], qualification: "MSc Chemistry", experience: "10 years", joinDate: "Aug 2014" },
-  { id: "t5", name: "Ms. Fatima Hassan",  avatar: "https://i.pravatar.cc/80?img=41", teacherId: "TCH10055", subject: "Literature",  email: "fatima@school.edu",  phone: "+1 555-0105", classes: 3, students: 95,  status: "Active",   classAssignments: ["9-A","10-B","11-C"], qualification: "MA English Literature", experience: "5 years", joinDate: "Jun 2019" },
-  { id: "t6", name: "Mr. Leo Fernandez",  avatar: "https://i.pravatar.cc/80?img=6",  teacherId: "TCH10066", subject: "History",     email: "leo@school.edu",     phone: "+1 555-0106", classes: 2, students: 72,  status: "Inactive", classAssignments: ["9-B","10-A"], qualification: "BA History", experience: "3 years", joinDate: "Feb 2021" },
-];
 
 const STATUS_COLORS: Record<Teacher["status"], string> = {
   Active: "bg-emerald-50 text-emerald-700", "On Leave": "bg-amber-50 text-amber-700", Inactive: "bg-ink-100 text-ink-500",
@@ -41,7 +33,7 @@ const PAGE_SIZE = 5;
 
 export default function AdminTeachersPage() {
   const { t } = useT();
-  const [teachers, setTeachers] = useState<Teacher[]>(INITIAL_TEACHERS);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("All");
@@ -65,7 +57,7 @@ export default function AdminTeachersPage() {
           const apiTeachers: Teacher[] = response.data.users.map((u: any) => ({
             id: String(u.id),
             name: u.name || u.full_name || "Unknown",
-            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.name || u.full_name || u.id}`,
+            avatar: "",
             teacherId: `TCH${String(u.id).padStart(5, "0")}`,
             subject: u.grade_level ? `Grade ${u.grade_level}` : "General",
             email: u.email || "",
@@ -82,7 +74,7 @@ export default function AdminTeachersPage() {
         }
       } catch (error) {
         console.error("Failed to load teachers:", error);
-        // Keep using mock data as fallback
+        setTeachers([]);
       } finally {
         setLoading(false);
       }
@@ -202,7 +194,10 @@ export default function AdminTeachersPage() {
                     <tr key={t.id} onClick={() => setViewTarget(t)} className="border-b border-ink-50 last:border-0 transition hover:bg-violet-50/30 cursor-pointer">
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-2.5">
-                          <img src={t.avatar} alt={t.name} className="size-9 rounded-full object-cover ring-2 ring-violet-100" />
+                          {t.avatar?.startsWith("data:")
+                            ? <img src={t.avatar} alt={t.name} className="size-9 rounded-full object-cover ring-2 ring-violet-100" />
+                            : <span className="flex size-9 items-center justify-center rounded-full bg-violet-100 ring-2 ring-violet-100"><UserCircle className="size-6 text-violet-400" /></span>
+                          }
                           <p className="font-semibold text-ink-900">{t.name}</p>
                         </div>
                       </td>
@@ -292,7 +287,10 @@ function TeacherDetail({ teacher: t, onClose, onEdit }: { teacher: Teacher; onCl
         </div>
         <div className="p-6">
           <div className="flex items-center gap-4 mb-6">
-            <img src={t.avatar} alt={t.name} className="size-16 rounded-full object-cover ring-4 ring-violet-100" />
+            {t.avatar?.startsWith("data:")
+              ? <img src={t.avatar} alt={t.name} className="size-16 rounded-full object-cover ring-4 ring-violet-100" />
+              : <span className="flex size-16 items-center justify-center rounded-full bg-violet-100 ring-4 ring-violet-100"><UserCircle className="size-10 text-violet-400" /></span>
+            }
             <div>
               <h3 className="text-xl font-bold text-ink-900">{t.name}</h3>
               <p className="text-sm text-ink-500">{t.subject} Teacher</p>

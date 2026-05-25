@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   Search, Plus, X, Mail, Phone, ChevronLeft, ChevronRight, MoreHorizontal,
-  Eye, Pencil, Trash2, Users, GraduationCap, Briefcase, Check, AlertTriangle, Loader2,
+  Eye, Pencil, Trash2, Users, GraduationCap, Briefcase, Check, AlertTriangle, Loader2, UserCircle,
 } from "lucide-react";
 import { AdminSidebar } from "../components/AdminSidebar";
 import { AdminTopbar } from "../components/AdminTopbar";
@@ -14,29 +14,6 @@ type Parent = {
   occupation: string; address: string; status: "Active" | "Inactive";
 };
 
-const ALL_STUDENTS = [
-  { name: "Evelyn Harper",   grade: "10-A", studentId: "PRE43178" },
-  { name: "Diana Plenty",    grade: "10-B", studentId: "PRE43174" },
-  { name: "John Millar",     grade: "11-A", studentId: "PRE43187" },
-  { name: "Sofia Martinez",  grade: "9-A",  studentId: "PRE43201" },
-  { name: "Noah Williams",   grade: "9-B",  studentId: "PRE43195" },
-  { name: "Amara Osei",      grade: "10-A", studentId: "PRE43210" },
-  { name: "Luca Bianchi",    grade: "12-A", studentId: "PRE43215" },
-  { name: "Priya Sharma",    grade: "11-B", studentId: "PRE43220" },
-  { name: "Mia Chen",        grade: "10-C", studentId: "PRE43225" },
-  { name: "Tariq Abdel",     grade: "12-B", studentId: "PRE43230" },
-];
-
-const INITIAL_PARENTS: Parent[] = [
-  { id: "p1", name: "Margaret Harper",  avatar: "https://i.pravatar.cc/80?img=46", email: "margaret@mail.com", phone: "+1 555-1001", children: [ALL_STUDENTS[0]], occupation: "Nurse",          address: "123 Oak Street, Springfield", status: "Active" },
-  { id: "p2", name: "Robert Plenty",    avatar: "https://i.pravatar.cc/80?img=9",  email: "robert@mail.com",   phone: "+1 555-1002", children: [ALL_STUDENTS[1]], occupation: "Engineer",       address: "456 Maple Ave, Greenville",   status: "Active" },
-  { id: "p3", name: "Sarah Millar",     avatar: "https://i.pravatar.cc/80?img=42", email: "sarah@mail.com",    phone: "+1 555-1003", children: [ALL_STUDENTS[2]], occupation: "Teacher",        address: "789 Pine Road, Lakewood",     status: "Active" },
-  { id: "p4", name: "Carlos Martinez",  avatar: "https://i.pravatar.cc/80?img=13", email: "carlos@mail.com",   phone: "+1 555-1004", children: [ALL_STUDENTS[3], ALL_STUDENTS[8]], occupation: "Accountant", address: "321 Elm Blvd, Riverside", status: "Active" },
-  { id: "p5", name: "James Williams",   avatar: "https://i.pravatar.cc/80?img=19", email: "james.w@mail.com",  phone: "+1 555-1005", children: [ALL_STUDENTS[4]], occupation: "Business Owner", address: "654 Cedar Lane, Hillside",    status: "Inactive" },
-  { id: "p6", name: "Kofi Osei",        avatar: "https://i.pravatar.cc/80?img=24", email: "kofi@mail.com",     phone: "+1 555-1006", children: [ALL_STUDENTS[5]], occupation: "Architect",      address: "987 Birch Way, Oakdale",      status: "Active" },
-  { id: "p7", name: "Marco Bianchi",    avatar: "https://i.pravatar.cc/80?img=5",  email: "marco@mail.com",    phone: "+1 555-1007", children: [ALL_STUDENTS[6], ALL_STUDENTS[9]], occupation: "Doctor",  address: "147 Walnut Ct, Fairview", status: "Active" },
-  { id: "p8", name: "Ravi Sharma",      avatar: "https://i.pravatar.cc/80?img=33", email: "ravi@mail.com",     phone: "+1 555-1008", children: [ALL_STUDENTS[7]], occupation: "Pharmacist",     address: "258 Ash Dr, Meadowbrook",     status: "Active" },
-];
 
 const STAT_CARDS = [
   { label: "Total Parents",  icon: Users,         gradient: "from-violet-500 via-purple-500 to-fuchsia-500", key: "total" },
@@ -63,7 +40,7 @@ export default function AdminParentsPage() {
         const mapped: Parent[] = response.data.map((p: any) => ({
           id: String(p.id),
           name: p.name || p.full_name || "Unknown",
-          avatar: p.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.name || p.id}`,
+          avatar: p.avatar || "",
           email: p.email || "",
           phone: p.phone || "",
           occupation: p.occupation || "",
@@ -145,11 +122,7 @@ export default function AdminParentsPage() {
       }
     } catch (error: any) {
       console.error("Failed to add parent:", error);
-      if (error?.message?.includes("duplicate") || error?.message?.includes("already exists") || error?.message?.includes("23505")) {
-        showToast("A parent with this email already exists");
-      } else {
-        showToast("Failed to add parent");
-      }
+      showToast(error?.message || "Failed to add parent");
     }
   }
 
@@ -235,7 +208,7 @@ export default function AdminParentsPage() {
                 style={{ animationDelay: `${i * 50}ms` }}>
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <img src={p.avatar} alt={p.name} className="size-11 rounded-full object-cover ring-2 ring-violet-100" />
+                    <span className="flex size-11 items-center justify-center rounded-full bg-violet-100 ring-2 ring-violet-100"><UserCircle className="size-8 text-violet-400" /></span>
                     <div>
                       <p className="font-semibold text-ink-900">{p.name}</p>
                       <p className="flex items-center gap-1 text-xs text-ink-500"><Briefcase className="size-3" />{p.occupation}</p>
@@ -438,7 +411,7 @@ function AddParentModal({ onClose, onAdd, nextId }: { onClose: () => void; onAdd
       occupation: form.occupation,
       address: form.address,
       status: "Active",
-      avatar: `https://i.pravatar.cc/80?img=${30 + nextId}`,
+      avatar: "",
       children: selectedStudents.map(s => ({ id: s.id, name: s.name, studentId: String(s.id), grade: s.grade_level || 'N/A' })),
     });
   }

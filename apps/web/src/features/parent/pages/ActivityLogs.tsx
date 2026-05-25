@@ -1,5 +1,6 @@
 import { Download } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { api } from "../../../services/api";
 import { useT } from "../../../i18n/I18nProvider";
 import {
   ActivityFilters,
@@ -7,7 +8,6 @@ import {
 } from "../components/activity/ActivityFilters";
 import { ActivityTimeline } from "../components/activity/ActivityTimeline";
 import { WeeklySummary } from "../components/activity/WeeklySummary";
-import { activityEntries } from "../data/activity";
 
 const initialFilters: ActivityFiltersValue = {
   range: "Last 7 Days",
@@ -24,9 +24,16 @@ const typeMap: Record<string, string> = {
 export function ActivityLogs() {
   const t = useT();
   const [filters, setFilters] = useState<ActivityFiltersValue>(initialFilters);
+  const [entries, setEntries] = useState<any[]>([]);
+
+  useEffect(() => {
+    api.getParentActivities().then((acts: any[]) => {
+      setEntries(acts || []);
+    }).catch(() => {});
+  }, []);
 
   const filtered = useMemo(() => {
-    return activityEntries.filter((e) => {
+    return entries.filter((e: any) => {
       if (filters.subject !== "All Subjects" && e.subject !== filters.subject)
         return false;
       if (
@@ -36,12 +43,12 @@ export function ActivityLogs() {
         return false;
       return true;
     });
-  }, [filters]);
+  }, [filters, entries]);
 
   const handleDownload = () => {
     const lines = [
       "Day,Time,Subject,Title,Description",
-      ...filtered.map((e) =>
+      ...filtered.map((e: any) =>
         [
           e.day,
           e.time,

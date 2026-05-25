@@ -25,19 +25,44 @@ const INITIAL: ProfileForm = {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const inputCls =
   "w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100";
-const DEFAULT_AVATAR = "https://i.pravatar.cc/160?img=47";
 const MAX_BYTES = 5 * 1024 * 1024;
 const ALLOWED = ["image/png", "image/jpeg", "image/webp"];
 
+function readLocalUser() {
+  try {
+    const raw = localStorage.getItem("user");
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
 export function TeacherProfileSection() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [avatar, setAvatar] = useState<string | null>(DEFAULT_AVATAR);
-  const [savedAvatar, setSavedAvatar] = useState<string | null>(DEFAULT_AVATAR);
+  const [avatar, setAvatar] = useState<string | null>(null);
+  const [savedAvatar, setSavedAvatar] = useState<string | null>(null);
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [form, setForm] = useState<ProfileForm>(INITIAL);
-  const [savedForm, setSavedForm] = useState<ProfileForm>(INITIAL);
+  const localUser = readLocalUser();
+  const initialForm: ProfileForm = {
+    firstName: localUser?.firstName || localUser?.fullName?.split(" ")[0] || INITIAL.firstName,
+    lastName: localUser?.lastName || localUser?.fullName?.split(" ").slice(1).join(" ") || INITIAL.lastName,
+    email: localUser?.email || INITIAL.email,
+    phone: localUser?.phone || INITIAL.phone,
+    title: localUser?.title || INITIAL.title,
+    subject: localUser?.subject || INITIAL.subject,
+    bio: localUser?.bio || INITIAL.bio,
+  };
+
+  const [form, setForm] = useState<ProfileForm>(initialForm);
+  const [savedForm, setSavedForm] = useState<ProfileForm>(initialForm);
+
+  useEffect(() => {
+    const u = readLocalUser();
+    if (u?.avatar) {
+      setAvatar(u.avatar);
+      setSavedAvatar(u.avatar);
+    }
+  }, []);
   const [errors, setErrors] = useState<Partial<Record<keyof ProfileForm, string>>>(
     {}
   );
@@ -76,6 +101,21 @@ export function TeacherProfileSection() {
     await new Promise((r) => setTimeout(r, 600));
     setSavedForm(form);
     setSavedAvatar(avatar);
+    const u = readLocalUser() || {};
+    const updated = {
+      ...u,
+      firstName: form.firstName,
+      lastName: form.lastName,
+      fullName: `${form.firstName} ${form.lastName}`.trim(),
+      email: form.email,
+      phone: form.phone,
+      title: form.title,
+      subject: form.subject,
+      bio: form.bio,
+      avatar: avatar ?? u.avatar ?? null,
+    };
+    localStorage.setItem("user", JSON.stringify(updated));
+    window.dispatchEvent(new Event("user-updated"));
     setSaving(false);
     setSavedAt(Date.now());
   };
@@ -113,9 +153,13 @@ export function TeacherProfileSection() {
       return;
     }
     if (objectUrl) URL.revokeObjectURL(objectUrl);
-    const url = URL.createObjectURL(file);
-    setObjectUrl(url);
-    setAvatar(url);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      setAvatar(base64);
+      setObjectUrl(null);
+    };
+    reader.readAsDataURL(file);
     setError(null);
   };
 

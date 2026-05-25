@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const registerSchema = z.object({
-  role: z.enum(["teacher", "parent"], {
+  role: z.enum(["teacher", "parent", "student"], {
     errorMap: () => ({ message: "Please select a role" }),
   }),
   fullName: z
@@ -21,6 +21,7 @@ export const registerSchema = z.object({
     .regex(/[a-z]/, "Include at least one lowercase letter")
     .regex(/[0-9]/, "Include at least one number"),
   gradeLevel: z.string().optional(),
+  studentEmail: z.string().email("Please enter a valid student email").optional(),
   acceptTerms: z.literal(true, {
     errorMap: () => ({ message: "You must accept the Terms and Conditions" }),
   }),
@@ -33,5 +34,6 @@ export const registerDefaultValues: Partial<RegisterFormValues> = {
   email: "",
   password: "",
   gradeLevel: "",
+  studentEmail: "",
   acceptTerms: undefined as unknown as true,
 };

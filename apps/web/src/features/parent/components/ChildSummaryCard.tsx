@@ -1,24 +1,43 @@
-import { CalendarCheck, GraduationCap, Trophy } from "lucide-react";
+import { CalendarCheck, GraduationCap, Trophy, UserCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { api } from "../../../services/api";
 import { useT } from "../../../i18n/I18nProvider";
 
 export function ChildSummaryCard() {
   const t = useT();
+  const [childName, setChildName] = useState("");
+  const [gradeLevel, setGradeLevel] = useState("");
+  const [gpa, setGpa] = useState<number | null>(null);
+  const [attendance, setAttendance] = useState<number | null>(null);
+
+  useEffect(() => {
+    api.getParentDashboard().then((data: any) => {
+      const child = data?.child || data?.children?.[0];
+      if (child) {
+        setChildName(child.fullName || child.full_name || child.name || "");
+        const grade = child.grade || child.grade_level;
+        setGradeLevel(grade ? (String(grade).startsWith("Grade") ? String(grade) : `Grade ${grade}`) : "");
+      }
+      const summary = data?.summary;
+      setGpa(summary?.gpa ?? data?.progress?.gpa ?? null);
+      setAttendance(summary?.attendance ?? data?.progress?.attendanceRate ?? null);
+    }).catch(() => {});
+  }, []);
+
   return (
     <section className="rounded-2xl bg-white p-6 shadow-card ring-1 ring-slate-100">
       <div className="flex flex-col items-center text-center">
         <div className="rounded-full p-1 ring-2 ring-indigo-500">
-          <img
-            src="https://i.pravatar.cc/160?img=12"
-            alt="Alex Johnson"
-            className="h-24 w-24 rounded-full object-cover"
-          />
+          <span className="flex h-24 w-24 items-center justify-center rounded-full bg-indigo-50">
+            <UserCircle className="h-16 w-16 text-indigo-400" />
+          </span>
         </div>
         <h3 className="mt-4 text-base font-semibold text-slate-900">
-          Alex Johnson
+          {childName || "—"}
         </h3>
         <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-slate-500">
           <GraduationCap className="h-3.5 w-3.5" />
-          Grade 10 · Lincoln High
+          {gradeLevel || "—"}
         </p>
       </div>
 
@@ -28,7 +47,9 @@ export function ChildSummaryCard() {
             <Trophy className="h-3.5 w-3.5 text-indigo-500" />
             {t("Overall GPA")}
           </div>
-          <p className="mt-3 text-2xl font-bold text-indigo-600">3.8</p>
+          <p className="mt-3 text-2xl font-bold text-indigo-600">
+            {gpa != null ? gpa.toFixed(1) : "—"}
+          </p>
         </div>
 
         <div className="rounded-xl bg-emerald-50/60 p-4 ring-1 ring-emerald-100">
@@ -36,7 +57,9 @@ export function ChildSummaryCard() {
             <CalendarCheck className="h-3.5 w-3.5 text-emerald-500" />
             {t("Attendance")}
           </div>
-          <p className="mt-3 text-2xl font-bold text-emerald-600">98%</p>
+          <p className="mt-3 text-2xl font-bold text-emerald-600">
+            {attendance != null ? `${Math.round(attendance)}%` : "—"}
+          </p>
         </div>
       </div>
     </section>

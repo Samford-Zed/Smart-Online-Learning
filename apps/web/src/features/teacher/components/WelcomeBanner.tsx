@@ -4,15 +4,16 @@ import { useT } from "../../../i18n/I18nProvider";
 type Props = {
   pendingCount: number;
   onReview?: () => void;
+  name?: string;
 };
 
-export function WelcomeBanner({ pendingCount, onReview }: Props) {
+export function WelcomeBanner({ pendingCount, onReview, name }: Props) {
   const t = useT();
   return (
     <section className="flex flex-col items-start justify-between gap-4 rounded-2xl bg-indigo-50 p-6 ring-1 ring-indigo-100 md:flex-row md:items-center">
       <div>
         <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">
-          {t("Welcome back, Ms. Sarah!")}
+          {name ? `${t("Welcome back,")} ${name}!` : t("Welcome back!")}
         </h2>
         <p className="mt-1 text-sm text-slate-600">
           {pendingCount} {t("pending feedback requests today.")}

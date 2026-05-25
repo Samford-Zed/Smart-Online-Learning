@@ -1,7 +1,7 @@
 import { ArrowRight, MoreVertical } from "lucide-react";
 import { useState } from "react";
 import { useT } from "../../../../i18n/I18nProvider";
-import { gradeDistribution } from "../../data/classManagement";
+import { type Student } from "../../data/classManagement";
 
 const palette = [
   "bg-emerald-500",
@@ -11,13 +11,29 @@ const palette = [
   "bg-rose-500",
 ];
 
+const LETTERS = ["A", "B", "C", "D", "F"];
+function computeDistribution(students: Student[]) {
+  const counts: Record<string, number> = { A: 0, B: 0, C: 0, D: 0, F: 0 };
+  students.forEach((s) => {
+    const p = s.gradePct;
+    if (p >= 90) counts["A"]++;
+    else if (p >= 80) counts["B"]++;
+    else if (p >= 70) counts["C"]++;
+    else if (p >= 60) counts["D"]++;
+    else counts["F"]++;
+  });
+  return LETTERS.map((l) => ({ letter: l, count: counts[l] }));
+}
+
 type Props = {
   onViewReport?: () => void;
+  students?: Student[];
 };
 
-export function GradeDistribution({ onViewReport }: Props = {}) {
+export function GradeDistribution({ onViewReport, students = [] }: Props) {
   const t = useT();
-  const max = Math.max(...gradeDistribution.map((d) => d.count));
+  const gradeDistribution = computeDistribution(students);
+  const max = Math.max(...gradeDistribution.map((d) => d.count), 1);
   const [hover, setHover] = useState<number | null>(null);
 
   return (

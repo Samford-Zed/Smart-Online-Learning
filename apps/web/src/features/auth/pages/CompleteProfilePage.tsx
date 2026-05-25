@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { api } from "../../../services/api";
 import { useSearchParams, useLocation, useNavigate, Link } from "react-router-dom";
 import {
   GraduationCap,
@@ -301,6 +302,7 @@ function TeacherStep3({ data, onChange, onSubmit, onBack, submitting }: { data: 
 type ParentData = {
   phone: string; occupation: string; address: string;
   childName: string; childGrade: string; childId: string;
+  childEmail: string;
   relationship: string;
 };
 
@@ -341,24 +343,24 @@ function ParentStep2({ data, onChange, onSubmit, onBack, submitting }: { data: P
   const [errors, setErrors] = useState<Partial<ParentData>>({});
   function validate() {
     const e: Partial<ParentData> = {};
-    if (!data.childName) e.childName = "Child's name is required";
-    if (!data.childGrade) e.childGrade = "Child's grade is required";
+    if (!data.childEmail) e.childEmail = "Child's school email is required";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.childEmail)) e.childEmail = "Enter a valid email address";
     return e;
   }
   function submit() { const e = validate(); setErrors(e); if (!Object.keys(e).length) onSubmit(); }
   return (
     <div className="flex flex-col gap-4">
-      <Field label="Child's Full Name" id="p-childName" icon={User} error={errors.childName}>
+      <Field label="Child's Full Name" id="p-childName" icon={User}>
         <input id="p-childName" type="text" placeholder="e.g. Elias Bekele" value={data.childName} onChange={e => onChange("childName", e.target.value)} className={inputCls(true)} />
       </Field>
-      <Field label="Child's Grade" id="p-childGrade" icon={BookMarked} error={errors.childGrade}>
+      <Field label="Child's School Email" id="p-childEmail" icon={Hash} error={errors.childEmail}>
+        <input id="p-childEmail" type="email" placeholder="e.g. elias@school.com" value={data.childEmail} onChange={e => onChange("childEmail", e.target.value)} className={inputCls(!!errors.childEmail)} />
+      </Field>
+      <Field label="Child's Grade" id="p-childGrade" icon={BookMarked}>
         <select id="p-childGrade" value={data.childGrade} onChange={e => onChange("childGrade", e.target.value)} className={selectCls(true)}>
-          <option value="">Select grade</option>
+          <option value="">Select grade (optional)</option>
           {[...Array(12)].map((_, i) => <option key={i + 1}>Grade {i + 1}</option>)}
         </select>
-      </Field>
-      <Field label="Child's Student ID (optional)" id="p-childId" icon={Hash}>
-        <input id="p-childId" type="text" placeholder="e.g. STU-2024-0042" value={data.childId} onChange={e => onChange("childId", e.target.value)} className={inputCls(true)} />
       </Field>
       <div className="flex gap-3">
         <button type="button" onClick={onBack} className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-ink-200 bg-white text-sm font-semibold text-ink-700 transition hover:bg-ink-50">
@@ -468,7 +470,7 @@ export default function CompleteProfilePage() {
   });
   const [parentData, setParentData] = useState<ParentData>({
     phone: "", occupation: "", address: "",
-    childName: "", childGrade: "", childId: "",
+    childName: "", childGrade: "", childId: "", childEmail: "",
     relationship: "",
   });
 
@@ -478,9 +480,16 @@ export default function CompleteProfilePage() {
 
   async function handleSubmit() {
     setSubmitting(true);
-    await new Promise(r => setTimeout(r, 800));
-    setSubmitting(false);
-    setDone(true);
+    try {
+      if (role === "parent" && parentData.childEmail) {
+        await api.linkParentToStudent(parentData.childEmail);
+      }
+    } catch {
+      // best-effort: still mark done so user can proceed
+    } finally {
+      setSubmitting(false);
+      setDone(true);
+    }
   }
 
   const firstName = fullName.split(" ")[0] || "there";

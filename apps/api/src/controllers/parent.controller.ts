@@ -117,6 +117,20 @@ export const updatePreferences = async (req: Request, res: Response) => {
   }
 };
 
+export const linkStudent = async (req: Request, res: Response) => {
+  try {
+    const parentId = req.auth?.userId;
+    const { studentEmail } = req.body;
+    if (!parentId) return res.status(401).json({ error: 'Unauthorized' });
+    if (!studentEmail) return res.status(400).json({ error: 'studentEmail is required' });
+
+    await ParentService.linkStudentByEmail(parentId, studentEmail);
+    res.json({ message: 'Student linked successfully' });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
 export const markNotificationRead = async (req: Request, res: Response) => {
   try {
     const parentId = req.auth?.userId;

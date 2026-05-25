@@ -43,6 +43,7 @@ app.get('/public', (req, res) => {
   res.json({ message: "Anyone can see this!" });
 });
 
+
 // A protected route (Uses JWT middleware)
 app.get('/protected', authenticateJWT, (req, res) => {
   // req.auth is available because the middleware verified the token!

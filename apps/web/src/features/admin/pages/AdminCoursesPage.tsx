@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Search, Plus, BookOpen, Users, User, Clock, MoreHorizontal, X, Star, Eye, Pencil, Trash2,
   Check, AlertTriangle, ChevronLeft, ChevronRight, GraduationCap, FileText, Tag, Calendar, ListChecks,
@@ -6,6 +6,7 @@ import {
 import { AdminSidebar } from "../components/AdminSidebar";
 import { AdminTopbar } from "../components/AdminTopbar";
 import { useT } from "../../../i18n/I18nProvider";
+import { api } from "../../../services/api";
 
 type Course = {
   id: string;
@@ -25,27 +26,7 @@ type Course = {
   level: "Beginner" | "Intermediate" | "Advanced";
 };
 
-const TEACHERS = [
-  { name: "Dr. Alice Monroe",  avatar: "https://i.pravatar.cc/80?img=49" },
-  { name: "Mr. James Okafor",  avatar: "https://i.pravatar.cc/80?img=11" },
-  { name: "Ms. Clara Zhang",   avatar: "https://i.pravatar.cc/80?img=45" },
-  { name: "Mr. David Mensah",  avatar: "https://i.pravatar.cc/80?img=14" },
-  { name: "Ms. Fatima Hassan", avatar: "https://i.pravatar.cc/80?img=41" },
-  { name: "Mr. Leo Fernandez", avatar: "https://i.pravatar.cc/80?img=6"  },
-];
-
-const ACCENTS = ["bg-emerald-500","bg-violet-600","bg-cyan-500","bg-orange-500","bg-rose-500","bg-amber-500","bg-brand","bg-teal-500"];
-
-const INITIAL_COURSES: Course[] = [
-  { id: "c1", title: "Biology 101: Foundations of Life", subject: "Biology",     teacher: "Dr. Alice Monroe",  teacherAvatar: "https://i.pravatar.cc/80?img=49", students: 120, duration: "12 weeks", modules: 12, rating: 4.8, status: "Active",   accentClass: "bg-emerald-500", description: "Comprehensive introduction to cellular biology, genetics, and ecological systems.", syllabus: ["Cell Structure & Function","Genetics & DNA","Evolution","Ecology","Human Anatomy"], startDate: "Sep 5, 2024", level: "Beginner" },
-  { id: "c2", title: "Calculus for High Schoolers",      subject: "Mathematics", teacher: "Mr. James Okafor",  teacherAvatar: "https://i.pravatar.cc/80?img=11", students: 145, duration: "16 weeks", modules: 15, rating: 4.7, status: "Active",   accentClass: "bg-violet-600",  description: "Learn limits, derivatives, integrals, and their real-world applications.", syllabus: ["Limits","Derivatives","Integration","Applications","Differential Equations"], startDate: "Sep 5, 2024", level: "Advanced" },
-  { id: "c3", title: "Physics II: Electromagnetism",     subject: "Physics",     teacher: "Ms. Clara Zhang",   teacherAvatar: "https://i.pravatar.cc/80?img=45", students: 98,  duration: "14 weeks", modules: 10, rating: 4.5, status: "Active",   accentClass: "bg-cyan-500",    description: "Explore electric and magnetic fields, circuits, and electromagnetic waves.", syllabus: ["Electric Fields","Magnetism","Circuits","Induction","Waves"], startDate: "Sep 12, 2024", level: "Intermediate" },
-  { id: "c4", title: "Organic Chemistry Fundamentals",   subject: "Chemistry",   teacher: "Mr. David Mensah",  teacherAvatar: "https://i.pravatar.cc/80?img=14", students: 110, duration: "12 weeks", modules: 11, rating: 4.6, status: "Active",   accentClass: "bg-orange-500",  description: "Learn carbon compounds, reactions, and biochemical processes.", syllabus: ["Hydrocarbons","Functional Groups","Reactions","Biochemistry"], startDate: "Sep 8, 2024", level: "Intermediate" },
-  { id: "c5", title: "World Literature & Composition",   subject: "Literature",  teacher: "Ms. Fatima Hassan", teacherAvatar: "https://i.pravatar.cc/80?img=41", students: 95,  duration: "10 weeks", modules: 9,  rating: 4.4, status: "Active",   accentClass: "bg-rose-500",    description: "Explore literature across cultures and develop critical writing skills.", syllabus: ["Greek Classics","Renaissance","Modern Novels","Essay Writing"], startDate: "Sep 10, 2024", level: "Beginner" },
-  { id: "c6", title: "Modern World History",             subject: "History",     teacher: "Mr. Leo Fernandez", teacherAvatar: "https://i.pravatar.cc/80?img=6",  students: 0,   duration: "12 weeks", modules: 8,  rating: 0,   status: "Draft",    accentClass: "bg-amber-500",   description: "Examine major events from 1500 to present day.", syllabus: ["Renaissance","Industrial Revolution","World Wars","Cold War"], startDate: "TBD", level: "Beginner" },
-  { id: "c7", title: "Introduction to Programming",      subject: "CS",          teacher: "Mr. James Okafor",  teacherAvatar: "https://i.pravatar.cc/80?img=11", students: 135, duration: "14 weeks", modules: 14, rating: 4.9, status: "Active",   accentClass: "bg-brand",       description: "Learn fundamentals of programming with Python.", syllabus: ["Variables & Types","Control Flow","Functions","OOP","Data Structures"], startDate: "Sep 5, 2024", level: "Beginner" },
-  { id: "c8", title: "Environmental Science (2023)",     subject: "Science",     teacher: "Dr. Alice Monroe",  teacherAvatar: "https://i.pravatar.cc/80?img=49", students: 87,  duration: "10 weeks", modules: 8,  rating: 4.3, status: "Archived", accentClass: "bg-teal-500",    description: "Study ecosystems, climate, and sustainability.", syllabus: ["Ecosystems","Climate","Pollution","Sustainability"], startDate: "Sep 2023", level: "Intermediate" },
-];
+const ACCENTS = ["bg-emerald-500","bg-violet-600","bg-cyan-500","bg-orange-500","bg-rose-500","bg-amber-500","bg-teal-500","bg-indigo-500"];
 
 const STATUS_COLORS: Record<Course["status"], string> = {
   Active: "bg-emerald-50 text-emerald-700", Draft: "bg-amber-50 text-amber-700", Archived: "bg-ink-100 text-ink-500",
@@ -55,7 +36,32 @@ const SUBJECTS = ["Biology","Mathematics","Physics","Chemistry","Literature","Hi
 
 export default function AdminCoursesPage() {
   const { t } = useT();
-  const [courses, setCourses] = useState<Course[]>(INITIAL_COURSES);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loadingCourses, setLoadingCourses] = useState(true);
+
+  useEffect(() => {
+    api.getAdminSubjects().then(res => {
+      if (res.success && Array.isArray(res.data)) {
+        setCourses(res.data.map((s: any, i: number) => ({
+          id: String(s.id),
+          title: s.name || s.title || "Untitled",
+          subject: s.name || "",
+          teacher: s.instructor || "",
+          teacherAvatar: "",
+          students: Number(s.enrolled_count || s.students || 0),
+          duration: s.duration || "—",
+          modules: Number(s.module_count || s.modules || 0),
+          rating: Number(s.rating || 0),
+          status: (s.status === "Draft" ? "Draft" : s.status === "Archived" ? "Archived" : "Active") as Course["status"],
+          accentClass: ACCENTS[i % ACCENTS.length],
+          description: s.description || "",
+          syllabus: Array.isArray(s.syllabus) ? s.syllabus : [],
+          startDate: s.start_date ? new Date(s.start_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—",
+          level: (s.level || "Beginner") as Course["level"],
+        })));
+      }
+    }).catch(() => {}).finally(() => setLoadingCourses(false));
+  }, []);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All" | Course["status"]>("All");
   const [showWizard, setShowWizard] = useState(false);

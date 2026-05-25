@@ -1,8 +1,14 @@
 import { CalendarCheck, TrendingUp, Users } from "lucide-react";
 import { useT } from "../../../../i18n/I18nProvider";
-import { classInfo } from "../../data/classManagement";
 
-export function ClassKpiCards() {
+type Props = {
+  totalStudents?: number;
+  attendanceRate?: number;
+  avgPerformance?: number;
+  avgGrade?: string;
+};
+
+export function ClassKpiCards({ totalStudents = 0, attendanceRate = 0, avgPerformance = 0, avgGrade = "—" }: Props) {
   const t = useT();
   return (
     <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
@@ -11,14 +17,14 @@ export function ClassKpiCards() {
         iconBg="bg-indigo-100"
         iconColor="text-indigo-600"
         label={t("Total Students")}
-        value={`${classInfo.totalStudents}`}
+        value={`${totalStudents}`}
       />
       <KpiCard
         icon={CalendarCheck}
         iconBg="bg-emerald-100"
         iconColor="text-emerald-600"
         label={t("Attendance Rate")}
-        value={`${classInfo.attendanceRate}%`}
+        value={`${attendanceRate}%`}
       />
       <KpiCard
         icon={TrendingUp}
@@ -27,9 +33,9 @@ export function ClassKpiCards() {
         label={t("Avg. Performance")}
         value={
           <span>
-            {classInfo.avgPerformance}%{" "}
+            {avgPerformance}%{" "}
             <span className="text-base font-bold text-amber-600">
-              {classInfo.avgGrade}
+              {avgGrade}
             </span>
           </span>
         }

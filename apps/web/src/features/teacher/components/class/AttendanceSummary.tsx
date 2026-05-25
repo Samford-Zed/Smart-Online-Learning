@@ -1,11 +1,16 @@
 import { CalendarDays, UserCheck } from "lucide-react";
 import { useState } from "react";
 import { useT } from "../../../../i18n/I18nProvider";
-import { attendanceCounts, classInfo } from "../../data/classManagement";
 
-export function AttendanceSummary() {
+type Props = {
+  present?: number;
+  late?: number;
+  absent?: number;
+};
+
+export function AttendanceSummary({ present = 0, late = 0, absent = 0 }: Props) {
   const t = useT();
-  const [counts, setCounts] = useState(attendanceCounts);
+  const [counts, setCounts] = useState({ present, late, absent });
   const [marked, setMarked] = useState(false);
 
   const total = counts.present + counts.late + counts.absent;
@@ -23,7 +28,7 @@ export function AttendanceSummary() {
           {t("Today")}
         </div>
         <span className="text-xs font-medium text-slate-500">
-          {classInfo.date}
+          {new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" })}
         </span>
       </header>
 

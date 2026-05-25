@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import {
   LineChart, Line, BarChart, Bar, AreaChart, Area,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
@@ -5,44 +6,38 @@ import {
 import { TrendingUp, Users, Clock, MousePointerClick, Activity } from "lucide-react";
 import { AdminSidebar } from "../components/AdminSidebar";
 import { AdminTopbar } from "../components/AdminTopbar";
+import { api } from "../../../services/api";
 
-const DAILY_ACTIVE = [
-  { day: "Mon", users: 420 }, { day: "Tue", users: 510 }, { day: "Wed", users: 480 },
-  { day: "Thu", users: 560 }, { day: "Fri", users: 530 }, { day: "Sat", users: 310 }, { day: "Sun", users: 270 },
-];
-
-const PAGE_VIEWS = [
-  { page: "Dashboard",   views: 3800 }, { page: "Classes",    views: 2950 },
-  { page: "Assignments", views: 2400 }, { page: "Grades",     views: 1800 },
-  { page: "Schedule",    views: 1600 }, { page: "Resources",  views: 1200 },
-  { page: "Assessments", views: 1050 },
-];
-
-const SESSION_DURATION = [
-  { month: "Jul", avg: 14 }, { month: "Aug", avg: 18 }, { month: "Sep", avg: 22 },
-  { month: "Oct", avg: 25 }, { month: "Nov", avg: 21 }, { month: "Dec", avg: 19 },
-];
-
-const DEVICE_USAGE = [
-  { month: "Aug", desktop: 58, mobile: 34, tablet: 8 },
-  { month: "Sep", desktop: 55, mobile: 37, tablet: 8 },
-  { month: "Oct", desktop: 52, mobile: 40, tablet: 8 },
-  { month: "Nov", desktop: 50, mobile: 42, tablet: 8 },
-];
-
-const KPI_CARDS = [
-  { label: "Daily Active Users", value: "530",   change: "+8.4%",  up: true,  icon: Users,           bg: "bg-violet-50", color: "text-violet-600" },
-  { label: "Avg. Session",       value: "25 min", change: "+12%",   up: true,  icon: Clock,           bg: "bg-cyan-50",   color: "text-cyan-600" },
-  { label: "Page Views / Day",   value: "14.8K",  change: "+5.1%",  up: true,  icon: MousePointerClick, bg: "bg-emerald-50", color: "text-emerald-600" },
-  { label: "Bounce Rate",        value: "22%",    change: "-3.2%",  up: false, icon: Activity,        bg: "bg-orange-50", color: "text-orange-500" },
-];
 
 export default function AdminAnalyticsPage() {
+  const [enrollmentTrends, setEnrollmentTrends] = useState<any[]>([]);
+  const [subjectEnrollment, setSubjectEnrollment] = useState<any[]>([]);
+  const [platformStats, setPlatformStats] = useState<any>(null);
+
+  useEffect(() => {
+    api.getAdminEnrollmentTrends(6).then(r => {
+      if (r.success && r.data?.length) setEnrollmentTrends(r.data.map((d: any) => ({ month: d.month, enrollments: Number(d.count || d.enrollments || 0) })));
+    }).catch(() => {});
+    api.getAdminSubjectEnrollment().then(r => {
+      if (r.success && r.data?.length) setSubjectEnrollment(r.data.map((d: any) => ({ page: d.name || d.subject, views: Number(d.count || d.enrolled || 0) })));
+    }).catch(() => {});
+    api.getAdminPlatformStats().then(r => {
+      if (r.success && r.data) setPlatformStats(r.data);
+    }).catch(() => {});
+  }, []);
+
+  const kpiCards = [
+    { label: "Total Students",  value: platformStats ? Number(platformStats.users?.students ?? platformStats.totalStudents ?? 0) : "—", change: "+8.4%",  up: true,  icon: Users,             bg: "bg-violet-50",  color: "text-violet-600" },
+    { label: "Total Teachers",  value: platformStats ? Number(platformStats.users?.teachers ?? platformStats.totalTeachers ?? 0) : "—", change: "+5%",    up: true,  icon: Clock,             bg: "bg-cyan-50",    color: "text-cyan-600" },
+    { label: "Active Subjects", value: platformStats ? Number(platformStats.subjects ?? platformStats.totalCourses ?? 0) : "—",           change: "+5.1%",  up: true,  icon: MousePointerClick, bg: "bg-emerald-50", color: "text-emerald-600" },
+    { label: "Total Users",     value: platformStats ? Number(platformStats.users?.total  ?? platformStats.totalEnrollments ?? 0) : "—",  change: "+12%",   up: true,  icon: Activity,          bg: "bg-orange-50",  color: "text-orange-500" },
+  ];
+
   return (
     <div className="flex min-h-screen bg-[#f5f5fb] font-sans text-ink-900">
       <AdminSidebar />
       <div className="flex min-w-0 flex-1 flex-col">
-        <AdminTopbar />r
+        <AdminTopbar />
         <main className="mx-auto w-full max-w-[1280px] flex-1 px-6 pb-12 pt-6">
 
           <div className="mb-6 animate-fade-in-up">
@@ -52,7 +47,7 @@ export default function AdminAnalyticsPage() {
 
           {/* KPI row */}
           <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4 animate-fade-in-up" style={{ animationDelay: "60ms" }}>
-            {KPI_CARDS.map((k, i) => (
+            {kpiCards.map((k, i) => (
               <div key={k.label} className="flex items-center gap-3 rounded-2xl border border-ink-200 bg-white p-4 shadow-card animate-fade-in-up"
                 style={{ animationDelay: `${i * 50}ms` }}>
                 <span className={`flex size-11 items-center justify-center rounded-xl ${k.bg}`}>
@@ -72,9 +67,9 @@ export default function AdminAnalyticsPage() {
           {/* Charts row 1 */}
           <div className="mb-5 grid grid-cols-1 gap-5 lg:grid-cols-2 animate-fade-in-up" style={{ animationDelay: "100ms" }}>
             <div className="rounded-2xl border border-ink-200 bg-white p-5 shadow-card">
-              <h2 className="mb-4 text-base font-bold text-ink-900">Daily Active Users (This Week)</h2>
+              <h2 className="mb-4 text-base font-bold text-ink-900">Monthly Enrollments</h2>
               <ResponsiveContainer width="100%" height={200}>
-                <AreaChart data={DAILY_ACTIVE} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+                <AreaChart data={enrollmentTrends} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%"  stopColor="#7c3aed" stopOpacity={0.18} />
@@ -82,18 +77,18 @@ export default function AdminAnalyticsPage() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
                   <Tooltip contentStyle={{ borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 12 }} />
-                  <Area type="monotone" dataKey="users" stroke="#7c3aed" strokeWidth={2.5} fill="url(#areaGrad)" name="Active Users" />
+                  <Area type="monotone" dataKey="enrollments" stroke="#7c3aed" strokeWidth={2.5} fill="url(#areaGrad)" name="Enrollments" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
 
             <div className="rounded-2xl border border-ink-200 bg-white p-5 shadow-card">
-              <h2 className="mb-4 text-base font-bold text-ink-900">Top Pages by Views</h2>
+              <h2 className="mb-4 text-base font-bold text-ink-900">Top Subjects by Enrollment</h2>
               <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={PAGE_VIEWS} layout="vertical" margin={{ top: 4, right: 16, left: 20, bottom: 0 }}>
+                <BarChart data={subjectEnrollment.length ? subjectEnrollment : [{ page: "No data", views: 0 }]} layout="vertical" margin={{ top: 4, right: 16, left: 20, bottom: 0 }}>
                   <XAxis type="number" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
                   <YAxis type="category" dataKey="page" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} width={80} />
                   <Tooltip contentStyle={{ borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 12 }} />
@@ -106,14 +101,14 @@ export default function AdminAnalyticsPage() {
           {/* Charts row 2 */}
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 animate-fade-in-up" style={{ animationDelay: "140ms" }}>
             <div className="rounded-2xl border border-ink-200 bg-white p-5 shadow-card">
-              <h2 className="mb-4 text-base font-bold text-ink-900">Avg. Session Duration (min)</h2>
+              <h2 className="mb-4 text-base font-bold text-ink-900">Monthly Enrollment Trend</h2>
               <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={SESSION_DURATION} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+                <LineChart data={enrollmentTrends} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
                   <Tooltip contentStyle={{ borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 12 }} />
-                  <Line type="monotone" dataKey="avg" stroke="#06b6d4" strokeWidth={2.5} dot={{ r: 4, fill: "#06b6d4" }} name="Avg. Duration" />
+                  <Line type="monotone" dataKey="enrollments" stroke="#06b6d4" strokeWidth={2.5} dot={{ r: 4, fill: "#06b6d4" }} name="Enrollments" />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -121,7 +116,7 @@ export default function AdminAnalyticsPage() {
             <div className="rounded-2xl border border-ink-200 bg-white p-5 shadow-card">
               <h2 className="mb-4 text-base font-bold text-ink-900">Device Usage Breakdown (%)</h2>
               <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={DEVICE_USAGE} barCategoryGap="35%" margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+                <BarChart data={subjectEnrollment} barCategoryGap="35%" margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />

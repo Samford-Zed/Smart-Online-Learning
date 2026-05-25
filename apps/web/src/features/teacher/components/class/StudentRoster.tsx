@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useT } from "../../../../i18n/I18nProvider";
-import { students, type AttendanceStatus, type Student } from "../../data/classManagement";
+import { type AttendanceStatus, type Student } from "../../data/classManagement";
 
 const PAGE_SIZE = 3;
 
@@ -45,9 +45,10 @@ const gradeColor = (pct: number) =>
 
 type Props = {
   totalStudents: number;
+  students?: Student[];
 };
 
-export function StudentRoster({ totalStudents }: Props) {
+export function StudentRoster({ totalStudents, students = [] }: Props) {
   const t = useT();
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -61,7 +62,7 @@ export function StudentRoster({ totalStudents }: Props) {
         s.email.toLowerCase().includes(q) ||
         s.studentId.toLowerCase().includes(q)
     );
-  }, [query]);
+  }, [query, students]);
 
   const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const totalPages = Math.max(

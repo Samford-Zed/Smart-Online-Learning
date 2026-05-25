@@ -17,6 +17,17 @@ export function TeacherDashboard({ onNavigate }: Props) {
   const [data, setData] = useState<{ classes: any[], stats: any, pendingFeedback?: any[], students?: any[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
+  const [userName, setUserName] = useState("");
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("user");
+      if (stored) {
+        const u = JSON.parse(stored);
+        setUserName(u.fullName || u.full_name || u.name || "");
+      }
+    } catch {}
+  }, []);
 
   useEffect(() => {
     getTeacherDashboard()
@@ -79,6 +90,7 @@ export function TeacherDashboard({ onNavigate }: Props) {
       <WelcomeBanner
         pendingCount={pendingCount}
         onReview={() => onNavigate("grade-submissions")}
+        name={userName}
       />
 
       <StatCards stats={statsList} />

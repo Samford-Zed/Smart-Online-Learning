@@ -1,7 +1,7 @@
 import { Save } from "lucide-react";
 import { useState } from "react";
 import { useT } from "../../../../i18n/I18nProvider";
-import { students } from "../../data/classManagement";
+import { type Student } from "../../data/classManagement";
 
 const letterFor = (pct: number): string => {
   if (pct >= 93) return "A";
@@ -28,9 +28,10 @@ const colorFor = (pct: number) =>
 type Props = {
   grades: Record<string, number>;
   onChange: (studentId: string, pct: number) => void;
+  students?: Student[];
 };
 
-export function GradebookView({ grades, onChange }: Props) {
+export function GradebookView({ grades, onChange, students = [] }: Props) {
   const t = useT();
   const [savedAt, setSavedAt] = useState<number | null>(null);
 

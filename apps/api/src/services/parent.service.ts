@@ -67,6 +67,32 @@ export const getNotifications = async (parentId: number) => {
   return result.rows;
 };
 
+export const linkStudentByEmail = async (parentId: number, studentEmail: string) => {
+  const studentResult = await pool.query(
+    "SELECT id FROM users WHERE email = $1 AND role = 'student'",
+    [studentEmail]
+  );
+  const studentId = studentResult.rows.length > 0 ? studentResult.rows[0].id : null;
+
+  // Check if link already exists
+  const existing = await pool.query(
+    'SELECT id FROM parent_student_links WHERE parent_id = $1',
+    [parentId]
+  );
+  if (existing.rows.length > 0) {
+    // Update existing link
+    await pool.query(
+      'UPDATE parent_student_links SET student_email = $1, student_id = $2 WHERE parent_id = $3',
+      [studentEmail, studentId, parentId]
+    );
+  } else {
+    await pool.query(
+      'INSERT INTO parent_student_links (parent_id, student_email, student_id) VALUES ($1, $2, $3)',
+      [parentId, studentEmail, studentId]
+    );
+  }
+};
+
 export const markNotificationRead = async (parentId: number, notificationId: number) => {
   await pool.query(
     'UPDATE notifications SET is_read = true WHERE id = $1 AND user_id = $2',

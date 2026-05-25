@@ -20,7 +20,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error(data.error || `API ${res.status} ${res.statusText}`);
+    throw new Error(data.error || data.message || `API ${res.status} ${res.statusText}`);
   }
   return res.json() as Promise<T>;
 }
@@ -29,7 +29,7 @@ export const api = {
   health: () => request<{ ok: boolean }>("/health"),
 
   // Auth endpoints
-  register: (data: { fullName: string; email: string; password: string; role: string; gradeLevel?: string }) =>
+  register: (data: { fullName: string; email: string; password: string; role: string; gradeLevel?: string; studentEmail?: string }) =>
     request<{ message: string; user: { id: number; fullName: string; email: string; role: string } }>("/auth/register", {
       method: "POST",
       body: JSON.stringify(data),
@@ -49,6 +49,8 @@ export const api = {
 
   // Current user
   getMe: () => request<{ id: number; fullName: string; email: string; role: string }>("/auth/me"),
+  updateMe: (data: { full_name?: string; phone?: string; bio?: string; address?: string }) =>
+    request<any>("/auth/me", { method: "PUT", body: JSON.stringify(data) }),
 
   // Student - Dashboard
   getStudentProfile: () => request<unknown>("/api/student/profile"),
@@ -120,7 +122,22 @@ export const api = {
 
   // Parent endpoints
   getParentDashboard: () => request<{ children: unknown[]; progress: unknown; notifications: unknown[] }>("/api/parent/dashboard"),
-  getParentProfile: () => request<unknown>("/api/parent/profile"),
+  getParentProfile: () => request<any>("/api/parent/profile"),
+  updateParentProfile: (data: { fullName?: string; email?: string }) => request<any>("/api/parent/profile", { method: "PUT", body: JSON.stringify(data) }),
+  getParentStudentProgress: (period?: string) => request<any>(`/api/parent/student/progress${period ? `?period=${period}` : ""}`),
+  getParentStudentReport: (period?: string) => request<any>(`/api/parent/student/report${period ? `?period=${period}` : ""}`),
+  getParentActivities: (filters?: { range?: string; type?: string; subject?: string }) => {
+    const p = new URLSearchParams();
+    if (filters?.range) p.append("range", filters.range);
+    if (filters?.type) p.append("type", filters.type);
+    if (filters?.subject) p.append("subject", filters.subject);
+    return request<any[]>(`/api/parent/student/activities?${p.toString()}`);
+  },
+  getParentNotifications: () => request<any[]>("/api/parent/notifications"),
+  linkParentToStudent: (studentEmail: string) => request<any>("/api/parent/link-student", { method: "POST", body: JSON.stringify({ studentEmail }) }),
+  markParentNotificationRead: (id: number) => request<any>(`/api/parent/notifications/${id}`, { method: "PATCH" }),
+  changeParentPassword: (currentPassword: string, newPassword: string) => request<any>("/api/parent/change-password", { method: "PATCH", body: JSON.stringify({ currentPassword, newPassword }) }),
+  updateParentPreferences: (data: any) => request<any>("/api/parent/preferences", { method: "PATCH", body: JSON.stringify(data) }),
 
   // Admin endpoints
   getAdminDashboard: () => request<{ success: boolean; data: any }>("/api/admin/dashboard"),
@@ -291,6 +308,16 @@ export const api = {
     request<{ success: boolean; data: any }>(`/api/admin/tasks/${id}`, { method: "PUT", body: JSON.stringify(data) }),
   deleteAdminTask: (id: string) =>
     request<{ success: boolean; message: string }>(`/api/admin/tasks/${id}`, { method: "DELETE" }),
+
+  // Admin - Page Settings
+  getAdminPageSettings: () =>
+    request<{ success: boolean; data: any[] }>("/api/admin/page-settings"),
+  updateAdminPageSetting: (route: string, data: { visible?: boolean; visibility?: string; description?: string }) =>
+    request<{ success: boolean; data: any }>("/api/admin/page-settings", { method: "PUT", body: JSON.stringify({ route, ...data }) }),
+
+  // Admin - Analytics platform stats
+  getAdminPlatformStats: () =>
+    request<{ success: boolean; data: any }>("/api/admin/analytics/platform-stats"),
 
   // Admin - Messages
   getAdminConversations: () =>

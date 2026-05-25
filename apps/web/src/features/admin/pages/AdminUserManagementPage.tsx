@@ -37,20 +37,6 @@ const STATUS_META: Record<UserStatus, { bg: string; text: string; dot: string; i
   Pending:   { bg: "bg-amber-50",   text: "text-amber-700",   dot: "bg-amber-500",   icon: <Clock className="size-3" /> },
 };
 
-const MOCK_USERS: SystemUser[] = [
-  { id: "u1",  name: "Priscilla Lily",    avatar: "https://i.pravatar.cc/80?img=47", email: "priscilla@school.edu",   phone: "+1 555-0001", role: "Admin",   lastLogin: "Just now",     status: "Active",    joined: "Jan 2022" },
-  { id: "u2",  name: "Dr. Alice Monroe",  avatar: "https://i.pravatar.cc/80?img=49", email: "alice@school.edu",       phone: "+1 555-0002", role: "Teacher", lastLogin: "2 hours ago",  status: "Active",    joined: "Aug 2022" },
-  { id: "u3",  name: "Mr. James Okafor",  avatar: "https://i.pravatar.cc/80?img=11", email: "james@school.edu",       phone: "+1 555-0003", role: "Teacher", lastLogin: "Yesterday",    status: "Active",    joined: "Aug 2022" },
-  { id: "u4",  name: "Evelyn Harper",     avatar: "https://i.pravatar.cc/80?img=44", email: "evelyn@school.edu",      phone: "+1 555-0004", role: "Student", lastLogin: "3 hours ago",  status: "Active",    joined: "Sep 2023" },
-  { id: "u5",  name: "Diana Plenty",      avatar: "https://i.pravatar.cc/80?img=36", email: "diana@school.edu",       phone: "+1 555-0005", role: "Student", lastLogin: "1 day ago",    status: "Active",    joined: "Sep 2023" },
-  { id: "u6",  name: "Margaret Harper",   avatar: "https://i.pravatar.cc/80?img=46", email: "margaret@mail.com",      phone: "+1 555-0006", role: "Parent",  lastLogin: "5 days ago",   status: "Active",    joined: "Sep 2023" },
-  { id: "u7",  name: "Noah Williams",     avatar: "https://i.pravatar.cc/80?img=12", email: "noah@school.edu",        phone: "+1 555-0007", role: "Student", lastLogin: "2 weeks ago",  status: "Suspended", joined: "Sep 2023" },
-  { id: "u8",  name: "New Teacher",       avatar: "https://i.pravatar.cc/80?img=21", email: "newteacher@school.edu",  phone: "+1 555-0008", role: "Teacher", lastLogin: "Never",        status: "Pending",   joined: "Oct 2024" },
-  { id: "u9",  name: "Priya Sharma",      avatar: "https://i.pravatar.cc/80?img=38", email: "priya@school.edu",       phone: "+1 555-0009", role: "Student", lastLogin: "3 weeks ago",  status: "Suspended", joined: "Sep 2022" },
-  { id: "u10", name: "Kofi Osei",         avatar: "https://i.pravatar.cc/80?img=24", email: "kofi@mail.com",          phone: "+1 555-0010", role: "Parent",  lastLogin: "1 week ago",   status: "Active",    joined: "Sep 2022" },
-  { id: "u11", name: "Carlos Martinez",   avatar: "https://i.pravatar.cc/80?img=33", email: "carlos@mail.com",        phone: "+1 555-0011", role: "Parent",  lastLogin: "2 months ago", status: "Inactive",  joined: "Sep 2022" },
-  { id: "u12", name: "Ms. Clara Zhang",   avatar: "https://i.pravatar.cc/80?img=45", email: "clara@school.edu",       phone: "+1 555-0012", role: "Teacher", lastLogin: "30 min ago",   status: "Active",    joined: "Aug 2023" },
-];
 
 const PAGE_SIZE = 7;
 
@@ -92,7 +78,7 @@ export default function AdminUserManagementPage() {
       }
     } catch (err) {
       console.error("Failed to load users:", err);
-      setUsers(MOCK_USERS);
+      setUsers([]);
     } finally {
       setLoading(false);
     }

@@ -48,7 +48,7 @@ const items: NavItem[] = [
   { key: "attendance",     tKey: "attendance",     icon: ClipboardCheck,  to: "/admin/attendance" },
   { key: "exams",          tKey: "exams",          icon: FileText,        to: "/admin/exams" },
   { key: "reports",        tKey: "reports",        icon: BarChart3,       to: "/admin/reports" },
-  { key: "announcements",  tKey: "announcements",  icon: Megaphone,       to: "/admin/announcements", badge: 2 },
+  { key: "announcements",  tKey: "announcements",  icon: Megaphone,       to: "/admin/announcements" },
   { key: "userManagement", tKey: "userManagement", icon: UserCog,         to: "/admin/users" },
   { key: "analytics",      tKey: "analytics",      icon: LineChart,       to: "/admin/analytics" },
   { key: "managePages",    tKey: "managePages",    icon: LayoutGrid,      to: "/admin/manage-pages" },

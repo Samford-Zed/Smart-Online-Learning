@@ -1,10 +1,36 @@
 import { TrendingUp } from "lucide-react";
+import { useEffect, useState } from "react";
+import { api } from "../../../../services/api";
 import { useT } from "../../../../i18n/I18nProvider";
-import { weeklyStats, weeklySubjects } from "../../data/activity";
 
 export function WeeklySummary() {
   const t = useT();
-  const { activeHours, weeklyGoal, deltaFromLastWeek } = weeklyStats;
+  const [activeHours, setActiveHours] = useState(0);
+  const [weeklyGoal, setWeeklyGoal] = useState(20);
+  const [delta, setDelta] = useState(0);
+  const [topSubjects, setTopSubjects] = useState<{ name: string; hours: number; dotColor: string }[]>([]);
+
+  const DOT_COLORS = ["bg-indigo-500", "bg-emerald-500", "bg-purple-500", "bg-amber-500"];
+
+  useEffect(() => {
+    api.getParentActivities().then((acts: any[]) => {
+      if (!acts?.length) return;
+      const hours = Math.round(acts.length * 0.5);
+      setActiveHours(hours);
+      setDelta(Math.max(0, hours - 12));
+      const subjectMap: Record<string, number> = {};
+      acts.forEach((a: any) => {
+        const sub = a.subject || "Other";
+        subjectMap[sub] = (subjectMap[sub] || 0) + 0.5;
+      });
+      const sorted = Object.entries(subjectMap)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 4)
+        .map(([name, hours], i) => ({ name, hours: Math.round(hours * 10) / 10, dotColor: DOT_COLORS[i % DOT_COLORS.length] }));
+      setTopSubjects(sorted);
+    }).catch(() => {});
+  }, []);
+
   const pct = Math.min(100, Math.round((activeHours / weeklyGoal) * 100));
 
   return (
@@ -31,7 +57,7 @@ export function WeeklySummary() {
           />
         </div>
         <p className="mt-1.5 text-right text-xs text-slate-500">
-          +{deltaFromLastWeek} hrs from last week
+          +{delta} hrs from last week
         </p>
       </div>
 
@@ -40,7 +66,7 @@ export function WeeklySummary() {
           {t("Most Accessed Subjects")}
         </p>
         <ul className="mt-3 space-y-3">
-          {weeklySubjects.map((s) => (
+          {topSubjects.map((s) => (
             <li
               key={s.name}
               className="flex items-center justify-between gap-3 text-sm"

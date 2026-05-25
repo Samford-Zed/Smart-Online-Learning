@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useT } from "../../../i18n/I18nProvider";
 import {
   AnnouncementsView,
@@ -17,58 +17,55 @@ import { GradeDistribution } from "../components/class/GradeDistribution";
 import { GradebookView } from "../components/class/GradebookView";
 import { GradeReportModal } from "../components/class/GradeReportModal";
 import { StudentRoster } from "../components/class/StudentRoster";
-import {
-  classInfo as defaultClassInfo,
-  students,
-  type AttendanceStatus,
-} from "../data/classManagement";
+import { type AttendanceStatus, type Student } from "../data/classManagement";
+import { getMyClasses, getClassStudents } from "../services/teacher.api";
 
 export function ClassManagement() {
   const t = useT();
   const [tab, setTab] = useState<ClassTab>("roster");
   const [info, setInfo] = useState<ClassInfoEditable>({
-    department: defaultClassInfo.department,
-    title: defaultClassInfo.title,
-    meta: defaultClassInfo.meta,
+    department: "",
+    title: "My Class",
+    meta: "",
   });
+  const [apiStudents, setApiStudents] = useState<Student[]>([]);
+  const [classSlug, setClassSlug] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  const [attendance, setAttendance] = useState<Record<string, AttendanceStatus>>(
-    () =>
-      students.reduce(
-        (acc, s) => {
-          acc[s.id] = s.status;
-          return acc;
-        },
-        {} as Record<string, AttendanceStatus>
-      )
-  );
-  const [grades, setGrades] = useState<Record<string, number>>(() =>
-    students.reduce(
-      (acc, s) => {
-        acc[s.id] = s.gradePct;
-        return acc;
-      },
-      {} as Record<string, number>
-    )
-  );
-  const [announcements, setAnnouncements] = useState<Announcement[]>([
-    {
-      id: "a1",
-      title: "Lab safety quiz on Friday",
-      body: "Review the safety handout, chapters 1-3. Quiz takes 20 minutes at the start of class.",
-      createdAt: Date.now() - 1000 * 60 * 60 * 26,
-      pinned: true,
-    },
-    {
-      id: "a2",
-      title: "Field trip permission slips",
-      body: "Please return signed slips by next Monday. Reach out if you need another copy.",
-      createdAt: Date.now() - 1000 * 60 * 60 * 72,
-      pinned: false,
-    },
-  ]);
+  const [attendance, setAttendance] = useState<Record<string, AttendanceStatus>>({});
+  const [grades, setGrades] = useState<Record<string, number>>({});
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+
+  useEffect(() => {
+    getMyClasses().then((classes: any[]) => {
+      if (!classes?.length) return;
+      const first = classes[0];
+      const slug = first.slug || String(first.id);
+      setClassSlug(slug);
+      setInfo({
+        department: first.subject || first.department || "",
+        title: first.name || first.title || "My Class",
+        meta: first.schedule || first.description || "",
+      });
+      return getClassStudents(slug);
+    }).then((studentsRaw: any) => {
+      if (!Array.isArray(studentsRaw)) return;
+      const mapped: Student[] = studentsRaw.map((s: any) => ({
+        id: String(s.id),
+        name: s.full_name || s.name || "Student",
+        email: s.email || "",
+        avatarUrl: "",
+        studentId: s.student_id || `#${s.id}`,
+        grade: s.grade || "—",
+        gradePct: Number(s.grade_pct || s.score || 0),
+        status: (s.attendance_status || "present") as AttendanceStatus,
+      }));
+      setApiStudents(mapped);
+      setAttendance(mapped.reduce((acc, s) => { acc[s.id] = s.status; return acc; }, {} as Record<string, AttendanceStatus>));
+      setGrades(mapped.reduce((acc, s) => { acc[s.id] = s.gradePct; return acc; }, {} as Record<string, number>));
+    }).catch(() => {});
+  }, []);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -84,7 +81,7 @@ export function ClassManagement() {
       "Grade %",
       "Attendance",
     ];
-    const rows = students.map((s) => [
+    const rows = apiStudents.map((s) => [
       s.studentId,
       s.name,
       s.email,
@@ -127,23 +124,29 @@ export function ClassManagement() {
         onEdit={() => setEditOpen(true)}
         onExport={handleExport}
       />
-      <ClassKpiCards />
+      <ClassKpiCards
+        totalStudents={apiStudents.length}
+        attendanceRate={apiStudents.length ? Math.round(apiStudents.filter(s => s.status === "present").length / apiStudents.length * 100) : 0}
+        avgPerformance={apiStudents.length ? Math.round(apiStudents.reduce((a, s) => a + s.gradePct, 0) / apiStudents.length) : 0}
+        avgGrade={(() => { const avg = apiStudents.length ? apiStudents.reduce((a, s) => a + s.gradePct, 0) / apiStudents.length : 0; return avg >= 93 ? "A" : avg >= 90 ? "A-" : avg >= 87 ? "B+" : avg >= 83 ? "B" : avg >= 80 ? "B-" : avg >= 77 ? "C+" : avg >= 73 ? "C" : avg >= 70 ? "C-" : avg >= 60 ? "D" : avg > 0 ? "F" : "—"; })()}
+      />
       <ClassTabs active={tab} onChange={setTab} />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0">
           {tab === "roster" && (
-            <StudentRoster totalStudents={defaultClassInfo.totalStudents} />
+            <StudentRoster totalStudents={apiStudents.length} students={apiStudents} />
           )}
           {tab === "attendance" && (
             <AttendanceView
               attendance={attendance}
+              students={apiStudents}
               onChange={(id, status) =>
                 setAttendance((prev) => ({ ...prev, [id]: status }))
               }
               onMarkAll={(status) => {
                 setAttendance(
-                  students.reduce(
+                  apiStudents.reduce(
                     (acc, s) => {
                       acc[s.id] = status;
                       return acc;
@@ -158,6 +161,7 @@ export function ClassManagement() {
           {tab === "gradebook" && (
             <GradebookView
               grades={grades}
+              students={apiStudents}
               onChange={(id, pct) =>
                 setGrades((prev) => ({ ...prev, [id]: pct }))
               }
@@ -192,8 +196,12 @@ export function ClassManagement() {
         </div>
 
         <aside className="space-y-4">
-          <AttendanceSummary />
-          <GradeDistribution onViewReport={() => setReportOpen(true)} />
+          <AttendanceSummary
+            present={Object.values(attendance).filter(s => s === "present").length}
+            late={Object.values(attendance).filter(s => s === "late").length}
+            absent={Object.values(attendance).filter(s => s === "absent").length}
+          />
+          <GradeDistribution onViewReport={() => setReportOpen(true)} students={apiStudents} />
         </aside>
       </div>
 

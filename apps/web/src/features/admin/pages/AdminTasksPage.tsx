@@ -24,14 +24,6 @@ type Task = {
   checklist: { text: string; done: boolean }[];
 };
 
-const ASSIGNEES = [
-  { name: "Admin",              avatar: "https://i.pravatar.cc/80?img=47" },
-  { name: "Dr. Alice Monroe",   avatar: "https://i.pravatar.cc/80?img=49" },
-  { name: "Mr. James Okafor",   avatar: "https://i.pravatar.cc/80?img=11" },
-  { name: "Ms. Clara Zhang",    avatar: "https://i.pravatar.cc/80?img=45" },
-  { name: "Mr. David Mensah",   avatar: "https://i.pravatar.cc/80?img=14" },
-  { name: "Ms. Fatima Hassan",  avatar: "https://i.pravatar.cc/80?img=41" },
-];
 
 const PRIORITY_META: Record<Priority, { bg: string; text: string; ring: string; gradient: string }> = {
   High:   { bg: "bg-red-50",     text: "text-red-700",     ring: "ring-red-200",     gradient: "from-red-500 to-orange-500" },
@@ -64,15 +56,6 @@ function daysUntil(iso: string) {
   return Math.round((d.getTime() - t.getTime()) / 86400000);
 }
 
-const INITIAL: Task[] = [
-  { id: "tk1", title: "Upload Q3 exam results",          description: "Add Biology & Math exam results to the portal and notify parents.", assignee: "Dr. Alice Monroe", assigneeAvatar: ASSIGNEES[1].avatar, priority: "High",   due: "2024-10-30", status: "To Do",       tag: "Academic", checklist: [{text:"Collect results from teachers",done:true},{text:"Upload to portal",done:false},{text:"Send parent notifications",done:false}] },
-  { id: "tk2", title: "Review teacher applications",     description: "Screen applications for 3 open positions.",                          assignee: "Admin",             assigneeAvatar: ASSIGNEES[0].avatar, priority: "High",   due: "2024-10-28", status: "To Do",       tag: "Administrative", checklist: [{text:"Shortlist CVs",done:false},{text:"Schedule interviews",done:false}] },
-  { id: "tk3", title: "Update course schedules",         description: "Reschedule Chemistry labs for November.",                            assignee: "Mr. David Mensah",  assigneeAvatar: ASSIGNEES[4].avatar, priority: "Medium", due: "2024-11-02", status: "In Progress", tag: "Academic", checklist: [{text:"Gather conflicts",done:true},{text:"Draft new schedule",done:true},{text:"Approval",done:false}] },
-  { id: "tk4", title: "Send parent newsletter",          description: "Monthly newsletter with academic updates.",                          assignee: "Admin",             assigneeAvatar: ASSIGNEES[0].avatar, priority: "Medium", due: "2024-10-31", status: "In Progress", tag: "Communication", checklist: [{text:"Draft content",done:true},{text:"Design template",done:false},{text:"Send",done:false}] },
-  { id: "tk5", title: "Audit student attendance",        description: "Generate attendance report for Q3.",                                 assignee: "Mr. James Okafor", assigneeAvatar: ASSIGNEES[2].avatar, priority: "Low",    due: "2024-11-05", status: "In Progress", tag: "Academic", checklist: [] },
-  { id: "tk6", title: "Library inventory update",        description: "Catalog new book arrivals.",                                         assignee: "Admin",             assigneeAvatar: ASSIGNEES[0].avatar, priority: "Low",    due: "2024-11-08", status: "Done",        tag: "Facilities", checklist: [{text:"Receive shipment",done:true},{text:"Catalog books",done:true}] },
-  { id: "tk7", title: "Publish fall term grades",        description: "Grades approved and ready to publish.",                              assignee: "Admin",             assigneeAvatar: ASSIGNEES[0].avatar, priority: "High",   due: "2024-10-25", status: "Done",        tag: "Academic", checklist: [{text:"Final review",done:true},{text:"Publish",done:true}] },
-];
 
 type PriorityFilter = "All" | Priority;
 
@@ -102,7 +85,7 @@ export default function AdminTasksPage() {
           title: t.title,
           description: t.description || "",
           assignee: t.assignee || "Admin",
-          assigneeAvatar: t.assignee_avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${t.assignee}`,
+          assigneeAvatar: t.assignee_avatar || "",
           priority: t.priority as Priority,
           due: t.due ? String(t.due).slice(0, 10) : "",
           status: t.status as TaskStatus,
@@ -110,10 +93,10 @@ export default function AdminTasksPage() {
           checklist: Array.isArray(t.checklist) ? t.checklist : [],
         })));
       } else {
-        setTasks(INITIAL);
+        setTasks([]);
       }
     } catch {
-      setTasks(INITIAL);
+      setTasks([]);
     } finally {
       setLoading(false);
     }
@@ -136,14 +119,14 @@ export default function AdminTasksPage() {
   }
   async function addTask(t: Task) {
     try {
-      const res = await api.createAdminTask({
+      await api.createAdminTask({
         title: t.title, description: t.description, assignee: t.assignee,
         assignee_avatar: t.assigneeAvatar, priority: t.priority,
         due: t.due || null, status: t.status, tag: t.tag, checklist: t.checklist,
       });
-      const created: Task = { ...t, id: String(res.data?.id || Date.now()) };
-      setTasks(ts => [created, ...ts]); setShowCreate(false);
+      setShowCreate(false);
       showToast(`"${t.title}" added`);
+      await loadTasks();
     } catch (err: any) { showToast(err.message || "Failed to create task"); }
   }
   async function updateTask(t: Task) {
@@ -415,7 +398,7 @@ function TaskDetail({ task: t, onClose, onEdit, onDelete, onMove, onToggleCheck 
         <div className="p-6">
           <div className="mb-5 grid grid-cols-2 gap-3">
             <div className="flex items-center gap-3 rounded-xl border border-ink-100 bg-ink-50 p-3">
-              <img src={t.assigneeAvatar} alt={t.assignee} className="size-10 rounded-full object-cover ring-2 ring-white" />
+              <span className="flex size-10 items-center justify-center rounded-full bg-violet-100 ring-2 ring-white"><User className="size-6 text-violet-500" /></span>
               <div className="min-w-0">
                 <p className="text-[10px] font-bold uppercase text-ink-400">Assigned To</p>
                 <p className="truncate text-sm font-semibold text-ink-900">{t.assignee}</p>
@@ -487,8 +470,8 @@ function TaskModal({ mode, task, onClose, onSave }: {
   const [form, setForm] = useState({
     title: seed.title || "",
     description: seed.description || "",
-    assignee: seed.assignee || ASSIGNEES[0].name,
-    assigneeAvatar: seed.assigneeAvatar || ASSIGNEES[0].avatar,
+    assignee: seed.assignee || "Admin",
+    assigneeAvatar: "",
     priority: (seed.priority || "Medium") as Priority,
     due: seed.due || "",
     status: (seed.status || "To Do") as TaskStatus,
@@ -497,10 +480,6 @@ function TaskModal({ mode, task, onClose, onSave }: {
     checkInput: "",
   });
   function set<K extends keyof typeof form>(k: K, v: typeof form[K]) { setForm(f => ({ ...f, [k]: v })); }
-  function selectAssignee(name: string) {
-    const a = ASSIGNEES.find(x => x.name === name)!;
-    setForm(f => ({ ...f, assignee: a.name, assigneeAvatar: a.avatar }));
-  }
   function addCheck() {
     if (!form.checkInput.trim()) return;
     setForm(f => ({ ...f, checklist: [...f.checklist, { text: f.checkInput.trim(), done: false }], checkInput: "" }));
@@ -539,18 +518,7 @@ function TaskModal({ mode, task, onClose, onSave }: {
           <Field label="Title *"><input value={form.title} onChange={e => set("title", e.target.value)} placeholder="Task title..." className={fieldCls} autoFocus /></Field>
           <Field label="Description"><textarea value={form.description} onChange={e => set("description", e.target.value)} rows={2} className={`${fieldCls} h-auto py-2`} placeholder="What needs to be done?" /></Field>
 
-          <div>
-            <p className="mb-2 text-xs font-semibold text-ink-700">Assign to</p>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {ASSIGNEES.map(a => (
-                <button key={a.name} type="button" onClick={() => selectAssignee(a.name)}
-                  className={`flex items-center gap-2 rounded-xl border-2 p-2 text-left transition ${form.assignee === a.name ? "border-violet-600 bg-violet-50" : "border-ink-200 hover:border-violet-300"}`}>
-                  <img src={a.avatar} alt={a.name} className="size-7 rounded-full object-cover" />
-                  <span className="truncate text-xs font-semibold text-ink-700">{a.name}</span>
-                </button>
-              ))}
-            </div>
-          </div>
+          <Field label="Assign to"><input value={form.assignee} onChange={e => set("assignee", e.target.value)} placeholder="Assignee name..." className={fieldCls} /></Field>
 
           <div className="grid grid-cols-2 gap-3">
             <Field label="Priority">

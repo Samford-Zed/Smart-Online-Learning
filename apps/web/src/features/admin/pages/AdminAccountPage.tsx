@@ -1,8 +1,8 @@
-import { useState, useRef, ChangeEvent } from "react";
+import { useState, useRef, useEffect, ChangeEvent } from "react";
 import {
   Camera, Save, Lock, Bell, Shield, Eye, EyeOff, User, Settings, Check, X,
   AlertTriangle, Mail, Phone, MapPin, Calendar, Award, Smartphone, Monitor,
-  LogOut, Trash2, Globe, Sparkles, Languages, Type, Palette, KeyRound, Activity,
+  LogOut, Trash2, Globe, Sparkles, Languages, Type, Palette, KeyRound, Activity, UserCircle,
 } from "lucide-react";
 import { AdminSidebar } from "../components/AdminSidebar";
 import { AdminTopbar } from "../components/AdminTopbar";
@@ -13,6 +13,7 @@ import {
   type FontSize,
 } from "../../student/settings/preferencesStore";
 import { useT, LOCALES } from "../../../i18n/I18nProvider";
+import { api } from "../../../services/api";
 
 const TABS = [
   { id: "profile",       label: "Profile",       icon: User },
@@ -78,16 +79,39 @@ export default function AdminAccountPage() {
 
 /* ─────────── Profile Tab ─────────── */
 function ProfileTab({ onToast }: { onToast: (msg: string, tone?: "success" | "error") => void }) {
-  const [avatar, setAvatar] = useState("https://i.pravatar.cc/120?img=47");
   const [form, setForm] = useState({
-    firstName: "Priscilla", lastName: "Lily",
-    email: "priscilla@school.edu", phone: "+1 555-0001",
-    address: "123 School Lane, Springfield",
-    role: "Admin", joined: "January 2022",
-    bio: "School administrator with 8 years of experience managing academic operations.",
+    firstName: "", lastName: "",
+    email: "", phone: "",
+    address: "",
+    role: "Admin", joined: "",
+    bio: "",
   });
+  const [avatar, setAvatar] = useState("");
   const [saving, setSaving] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    api.getMe().then((u: any) => {
+      const fullName: string = u.fullName || u.full_name || "";
+      const parts = fullName.trim().split(" ");
+      setForm(f => ({
+        ...f,
+        firstName: parts[0] || "",
+        lastName:  parts.slice(1).join(" ") || "",
+        email:     u.email || "",
+        phone:     u.phone || "",
+        address:   u.address || "",
+        bio:       u.bio || "",
+        role:      u.role || "Admin",
+        joined:    u.created_at
+          ? new Date(u.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" })
+          : "",
+      }));
+      const key = `admin_avatar_${u.id || u.email}`;
+      const saved = localStorage.getItem(key);
+      setAvatar(saved || `https://api.dicebear.com/7.x/avataaars/svg?seed=${fullName || u.email}`);
+    }).catch(() => {});
+  }, []);
 
   function set<K extends keyof typeof form>(k: K, v: typeof form[K]) { setForm(f => ({ ...f, [k]: v })); }
   function pickFile() { fileInput.current?.click(); }
@@ -96,12 +120,31 @@ function ProfileTab({ onToast }: { onToast: (msg: string, tone?: "success" | "er
     if (!file) return;
     if (!file.type.startsWith("image/")) { onToast("Please choose an image file", "error"); return; }
     const reader = new FileReader();
-    reader.onload = ev => { setAvatar(ev.target?.result as string); onToast("Photo updated"); };
+    reader.onload = ev => {
+      const dataUrl = ev.target?.result as string;
+      setAvatar(dataUrl);
+      api.getMe().then((u: any) => {
+        localStorage.setItem(`admin_avatar_${u.id || u.email}`, dataUrl);
+      }).catch(() => {});
+      onToast("Photo updated");
+    };
     reader.readAsDataURL(file);
   }
-  function handleSave() {
-    setSaving(true);
-    setTimeout(() => { setSaving(false); onToast("Profile saved successfully"); }, 700);
+  async function handleSave() {
+    try {
+      setSaving(true);
+      await api.updateMe({
+        full_name: `${form.firstName} ${form.lastName}`.trim(),
+        phone: form.phone,
+        bio: form.bio,
+        address: form.address,
+      });
+      onToast("Profile saved successfully");
+    } catch {
+      onToast("Failed to save profile", "error");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -113,7 +156,10 @@ function ProfileTab({ onToast }: { onToast: (msg: string, tone?: "success" | "er
           <div className="-mt-12 flex flex-col items-start gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div className="flex items-end gap-4">
               <div className="relative">
-                <img src={avatar} alt="Avatar" className="size-24 rounded-2xl border-4 border-white object-cover shadow-lg" />
+                {avatar.startsWith("data:")
+                  ? <img src={avatar} alt="Avatar" className="size-24 rounded-2xl border-4 border-white object-cover shadow-lg" />
+                  : <span className="flex size-24 items-center justify-center rounded-2xl border-4 border-white bg-violet-100 shadow-lg"><UserCircle className="size-16 text-violet-400" /></span>
+                }
                 <button onClick={pickFile} className="absolute bottom-1 right-1 flex size-8 items-center justify-center rounded-full bg-violet-600 text-white shadow-md hover:bg-violet-700 hover:scale-110 transition">
                   <Camera className="size-4" />
                 </button>
