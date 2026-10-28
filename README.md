@@ -1,4 +1,5 @@
-# Smart Online Learning System (SOLS)
+# Smart Online Learning System
+
 
 Welcome to the SOLS project repository! This project is structured as a **Monorepo**, meaning both our Frontend and Backend applications, along with shared configurations and documentation, all live together in this single repository.
 
